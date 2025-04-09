@@ -123,8 +123,7 @@ func (e DownloadStopped) Duration() time.Duration {
 
 // BitrateInMbps returns the bitrate of the download in mebibits per second.
 func (e DownloadStopped) BitrateInMbps() string {
-	duration := e.Stopped.Sub(e.Started)
-	return bitrate(e.Downloaded, duration)
+	return bitrate(e.Downloaded, e.Duration())
 }
 
 // DownloadResetReason identifies the reason that a download was reset.
