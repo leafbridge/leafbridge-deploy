@@ -1,15 +1,20 @@
 package lbengine
 
-import "github.com/leafbridge/leafbridge-deploy/lbdeploy"
+import (
+	"github.com/leafbridge/leafbridge-deploy/lbdeploy"
+	"github.com/leafbridge/leafbridge-deploy/tempfs"
+)
 
 // engineState keeps track of the overall state of an flow.
 type engineState struct {
-	activeFlows flowSet
+	activeFlows       flowSet
+	extractedPackages map[lbdeploy.PackageID]tempfs.ExtractionDir
 }
 
 func newEngineState() *engineState {
 	return &engineState{
-		activeFlows: make(flowSet),
+		activeFlows:       make(flowSet),
+		extractedPackages: make(map[lbdeploy.PackageID]tempfs.ExtractionDir),
 	}
 }
 

@@ -61,60 +61,70 @@ func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy
 		return fmt.Errorf("the command \"%s\" does not exist within the \"%s\" package", command, engine.pkg.ID)
 	}
 
-	// Open the package file, or create it if it doesn't exist.
-	packageFile, err := engine.openPackageFile()
-	if err != nil {
-		return fmt.Errorf("failed to prepare package file: %w", err)
-	}
-	defer packageFile.Close()
+	// Check the state to see whether we've already downloaded, verified and
+	// extracted the files in this package.
+	extractedFiles, alreadyExtracted := engine.state.extractedPackages[engine.pkg.ID]
 
-	// Prepare a download engine.
-	de := downloadEngine{
-		deployment: engine.deployment,
-		flow:       engine.flow,
-		action:     engine.action,
-		events:     engine.events,
-		state:      engine.state,
-	}
+	// Download, verify and extract the package if we haven't done so already.
+	if !alreadyExtracted {
+		// Open the package file, or create it if it doesn't exist.
+		packageFile, err := engine.openPackageFile()
+		if err != nil {
+			return fmt.Errorf("failed to prepare package file: %w", err)
+		}
+		defer packageFile.Close()
 
-	// Download and verify the package data.
-	//
-	// If the file already contains the expected data, the download will be
-	// skipped.
-	//
-	// If the file was partially downloaded, the download will be resumed.
-	if err := de.DownloadAndVerifyPackage(ctx, engine.pkg, packageFile); err != nil {
-		return err
-	}
+		// Prepare a download engine.
+		de := downloadEngine{
+			deployment: engine.deployment,
+			flow:       engine.flow,
+			action:     engine.action,
+			events:     engine.events,
+			state:      engine.state,
+		}
 
-	// Extract the package.
+		// Download and verify the package data.
+		//
+		// If the file already contains the expected data, the download will be
+		// skipped.
+		//
+		// If the file was partially downloaded, the download will be resumed.
+		if err := de.DownloadAndVerifyPackage(ctx, engine.pkg, packageFile); err != nil {
+			return err
+		}
 
-	// Create a temporary directory to hold the extracted files.
-	extractedFiles, err := tempfs.OpenExtractionDirForPackage(lbdeploy.PackageContent{
-		ID:          engine.pkg.ID,
-		PrimaryHash: engine.pkg.Definition.Attributes.Hashes.Primary(),
-	}, tempfs.Options{
-		DeleteOnClose: true,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to prepare a directory for file extraction: %w", err)
-	}
+		// Create a temporary directory to hold the extracted files.
+		extractedFiles, err = tempfs.OpenExtractionDirForPackage(lbdeploy.PackageContent{
+			ID:          engine.pkg.ID,
+			PrimaryHash: engine.pkg.Definition.Attributes.Hashes.Primary(),
+		}, tempfs.Options{
+			DeleteOnClose: true,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to prepare a directory for file extraction: %w", err)
+		}
 
-	// Delete all of the extracted files when we are finished.
-	defer extractedFiles.Close()
+		// Prepare an extraction engine.
+		ee := extractionEngine{
+			deployment: engine.deployment,
+			flow:       engine.flow,
+			action:     engine.action,
+			events:     engine.events,
+			state:      engine.state,
+		}
 
-	// Prepare an extraction engine.
-	ee := extractionEngine{
-		deployment: engine.deployment,
-		flow:       engine.flow,
-		action:     engine.action,
-		events:     engine.events,
-		state:      engine.state,
-	}
+		// Extract the files.
+		if err := ee.ExtractPackage(ctx, packageFile, extractedFiles); err != nil {
+			extractedFiles.Close()
+			return fmt.Errorf("extraction failed: %w", err)
+		}
 
-	// Extract the files.
-	if err := ee.ExtractPackage(ctx, packageFile, extractedFiles); err != nil {
-		return fmt.Errorf("extraction failed: %w", err)
+		// Add the extracted files to the engine's state, so that they'll be
+		// available for other flows.
+		//
+		// This will also cause the deployment engine to close the extracted
+		// files after the orginating flow has finished.
+		engine.state.extractedPackages[engine.pkg.ID] = extractedFiles
 	}
 
 	// Prepare a command engine.

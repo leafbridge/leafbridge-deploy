@@ -42,6 +42,15 @@ func (engine DeploymentEngine) Invoke(ctx context.Context, flow lbdeploy.FlowID)
 		return fmt.Errorf("the flow \"%s\" does not exist within the \"%s\" deployment", flow, engine.deployment.ID)
 	}
 
+	// Close and remove any extracted files in temporary directories when we
+	// are finished.
+	defer func() {
+		for packageID, extractedFiles := range engine.state.extractedPackages {
+			extractedFiles.Close()
+			delete(engine.state.extractedPackages, packageID)
+		}
+	}()
+
 	// Invoke the requested flow.
 	fe := flowEngine{
 		deployment: engine.deployment,
