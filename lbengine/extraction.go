@@ -3,8 +3,8 @@ package lbengine
 import (
 	"archive/zip"
 	"context"
+	"fmt"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/leafbridge/leafbridge-deploy/lbdeploy"
@@ -83,7 +83,7 @@ func (engine *extractionEngine) extractPackage(ctx context.Context, source stagi
 				// If this is a directory, make sure it exists.
 				if fileInfo.IsDir() {
 					if err := destination.MkdirAll(zipFile.Name); err != nil {
-						return err
+						return fmt.Errorf("failed to create parent directory: %w", err)
 					}
 					destinationStats.Directories++
 					return nil
@@ -94,16 +94,16 @@ func (engine *extractionEngine) extractPackage(ctx context.Context, source stagi
 				// encountered.
 
 				// If this is a file, make sure the directory it goes in exists.
-				if zipDir := path.Dir(zipFile.Name); !strings.HasPrefix(zipDir, ".") {
+				if zipDir := path.Dir(zipFile.Name); zipDir != "" && zipDir != "." {
 					if err := destination.MkdirAll(zipDir); err != nil {
-						return err
+						return fmt.Errorf("failed to create parent directory: %w", err)
 					}
 				}
 
 				// Open the file.
 				fileReader, err := zipFile.Open()
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to open file within the zip archive: %w", err)
 				}
 				defer fileReader.Close()
 
@@ -111,7 +111,7 @@ func (engine *extractionEngine) extractPackage(ctx context.Context, source stagi
 				// modification time.
 				written, err := destination.WriteFile(zipFile.Name, newReaderWithContext(ctx, fileReader), zipFile.Modified)
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to write file to its destination: %w", err)
 				}
 
 				// Update statistics.

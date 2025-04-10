@@ -83,14 +83,28 @@ func (d ExtractionDir) Path() string {
 // If name does not identify a local file path, or if directory creation
 // fails, it rturns an error.
 func (d ExtractionDir) MkdirAll(path string) error {
+	// Removing trailing path separators, which are present at the end of
+	// directory paths in zip files.
+	path = strings.TrimSuffix(path, "/")
+
+	// Localize the directory path, which ensures that it conforms to the
+	// local file system path separators and is in fact a relative path.
 	localized, err := filepath.Localize(path)
 	if err != nil {
-		return err
+		return fmt.Errorf("localization of the directory path failed: %w", err)
 	}
 
+	// Join the relative path to the absolute path of the extraciton
+	// directory.
 	dirPath := filepath.Join(d.path, localized)
 
-	os.MkdirAll(dirPath, 0755)
+	// Create the directory and any of it ancestors that don't already exist.
+	if err := os.MkdirAll(dirPath, 0755); err != nil {
+		return fmt.Errorf("failed to create directory path: %w", err)
+	}
+
+	// TODO: Use d.dir.MkdirAll() when Go 1.25 is released, which should
+	// include it.
 
 	return nil
 }
@@ -105,17 +119,17 @@ func (d ExtractionDir) MkdirAll(path string) error {
 // The standard unix file separator, forward slash (/), must be used as the
 // separator in the provided path.
 func (d ExtractionDir) WriteFile(path string, r io.Reader, modified time.Time) (written int64, err error) {
-	// Convert the unix-style path to windows-style and ensure that it is a
-	// local path.
+	// Localize the file path, which ensures that it conforms to the
+	// local file system path separators and is in fact a relative path.
 	localized, err := filepath.Localize(path)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("localization of the file path failed: %w", err)
 	}
 
 	// If this file is in a subdirectory, open its parent.
 	dirPath, fileName := filepath.Split(localized)
 	var parent *os.Root
-	if !strings.HasPrefix(dirPath, ".") {
+	if dirPath != "" {
 		parent, err = d.dir.OpenRoot(dirPath)
 		if err != nil {
 			return 0, fmt.Errorf("failed to open parent directory: %w", err)
