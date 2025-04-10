@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/leafbridge/leafbridge-deploy/lbdeploy"
@@ -17,6 +18,7 @@ type DeployCmd struct {
 	ConfigFile string          `kong:"required,name='config-file',help='Path to a deployment file describing the deployment.'"`
 	Flow       lbdeploy.FlowID `kong:"required,name='flow',help='The flow to invoke within the deployment.'"`
 	ShowConfig bool            `kong:"optional,name='show-config',help='Show the loaded configuration.'"`
+	Verbose    bool            `kong:"optional,name='verbose',short='v',help='Show debug messages on the command line.'"`
 }
 
 // Run executes the LeafBridge deploy command.
@@ -45,7 +47,25 @@ func (cmd DeployCmd) Run(ctx context.Context) error {
 			Handler: slog.NewJSONHandler(os.Stdout, nil),
 		}}
 	*/
-	recorder := lbevent.Recorder{Handler: lbevent.NewBasicHandler(os.Stdout)}
+
+	// Attempt to use a Windows event handler, but carry on regardless if it
+	// doens't work out. The most likely reason it won't work is if the
+	// running process isn't elevated.
+	var handler lbevent.Handler
+	{
+		min := slog.LevelInfo
+		if cmd.Verbose {
+			min = slog.LevelDebug
+		}
+		basicHandler := lbevent.NewBasicHandler(os.Stdout, min)
+		windowsHandler, err := lbevent.NewWindowsHandler()
+		if err != nil {
+			handler = basicHandler
+		} else {
+			handler = lbevent.MultiHandler{basicHandler, windowsHandler}
+		}
+	}
+	recorder := lbevent.Recorder{Handler: handler}
 
 	// Prepare a new deployment engine for the deployment.
 	engine := lbengine.NewDeploymentEngine(dep, lbengine.Options{
