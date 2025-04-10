@@ -29,6 +29,7 @@ type commandEngine struct {
 	pkg        packageData
 	command    commandData
 	events     lbevent.Recorder
+	state      *engineState
 }
 
 // Invoke runs the command.

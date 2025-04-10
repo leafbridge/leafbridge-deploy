@@ -20,6 +20,7 @@ type downloadEngine struct {
 	flow       flowData
 	action     actionData
 	events     lbevent.Recorder
+	state      *engineState
 }
 
 // DownloadAndVerifyPackage will attempt to download and verify a package

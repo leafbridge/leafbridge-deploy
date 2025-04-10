@@ -23,6 +23,7 @@ type packageEngine struct {
 	action     actionData
 	pkg        packageData
 	events     lbevent.Recorder
+	state      *engineState
 }
 
 // preparePackage performs a package preparation action.
@@ -40,6 +41,7 @@ func (engine *packageEngine) PreparePackage(ctx context.Context) error {
 		flow:       engine.flow,
 		action:     engine.action,
 		events:     engine.events,
+		state:      engine.state,
 	}
 
 	// Download and verify the package data.
@@ -72,6 +74,7 @@ func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy
 		flow:       engine.flow,
 		action:     engine.action,
 		events:     engine.events,
+		state:      engine.state,
 	}
 
 	// Download and verify the package data.
@@ -106,6 +109,7 @@ func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy
 		flow:       engine.flow,
 		action:     engine.action,
 		events:     engine.events,
+		state:      engine.state,
 	}
 
 	// Extract the files.
@@ -124,6 +128,7 @@ func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy
 			Definition: commandDefinition,
 		},
 		events: engine.events,
+		state:  engine.state,
 	}
 
 	// Invoke the command.

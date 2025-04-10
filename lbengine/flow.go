@@ -2,6 +2,7 @@ package lbengine
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/leafbridge/leafbridge-deploy/lbdeploy"
@@ -20,9 +21,24 @@ type flowEngine struct {
 	deployment lbdeploy.Deployment
 	flow       flowData
 	events     lbevent.Recorder
+	state      *engineState
 }
 
 func (engine flowEngine) Invoke(ctx context.Context) error {
+	// Check for a flow cycle and stop if one is detected.
+	if engine.state.activeFlows.Contains(engine.flow.ID) {
+		// Record the start of the flow.
+		engine.events.Record(lbdeployevent.FlowAlreadyRunning{
+			Deployment: engine.deployment.ID,
+			Flow:       engine.flow.ID,
+		})
+		return fmt.Errorf("the flow \"%s\" is already running", engine.flow.ID)
+	}
+
+	// Record this as a running flow as long as it is running.
+	engine.state.activeFlows.Add(engine.flow.ID)
+	defer engine.state.activeFlows.Remove(engine.flow.ID)
+
 	// Record the start of the flow.
 	engine.events.Record(lbdeployevent.FlowStarted{
 		Deployment: engine.deployment.ID,
@@ -43,6 +59,7 @@ func (engine flowEngine) Invoke(ctx context.Context) error {
 					Definition: action,
 				},
 				events: engine.events,
+				state:  engine.state,
 			}
 			if err := ae.Invoke(ctx); err != nil {
 				return err

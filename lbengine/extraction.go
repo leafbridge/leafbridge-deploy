@@ -21,6 +21,7 @@ type extractionEngine struct {
 	flow       flowData
 	action     actionData
 	events     lbevent.Recorder
+	state      *engineState
 }
 
 func (engine *extractionEngine) ExtractPackage(ctx context.Context, source stagingfs.PackageFile, destination tempfs.ExtractionDir) error {

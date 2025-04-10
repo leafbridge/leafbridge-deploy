@@ -13,6 +13,7 @@ import (
 type DeploymentEngine struct {
 	deployment lbdeploy.Deployment
 	events     lbevent.Recorder
+	state      *engineState
 }
 
 // NewDeploymentEngine returns a new LeafBridge deployment engine for the
@@ -21,6 +22,7 @@ func NewDeploymentEngine(deployment lbdeploy.Deployment, opts Options) Deploymen
 	return DeploymentEngine{
 		deployment: deployment,
 		events:     opts.Events,
+		state:      newEngineState(),
 	}
 }
 
@@ -48,6 +50,7 @@ func (engine DeploymentEngine) Invoke(ctx context.Context, flow lbdeploy.FlowID)
 			Definition: definition,
 		},
 		events: engine.events,
+		state:  engine.state,
 	}
 
 	return fe.Invoke(ctx)

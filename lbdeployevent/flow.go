@@ -87,3 +87,34 @@ func (e FlowStopped) Attrs() []slog.Attr {
 func (e FlowStopped) Duration() time.Duration {
 	return e.Stopped.Sub(e.Started)
 }
+
+// FlowAlreadyRunning is an event that occurs when a deployment flow cannot
+// be started because the flow is already running. This might indicate a cycle
+// in the flow logic.
+type FlowAlreadyRunning struct {
+	Deployment lbdeploy.DeploymentID
+	Flow       lbdeploy.FlowID
+}
+
+// Component identifies the component that generated the event.
+func (e FlowAlreadyRunning) Component() string {
+	return "flow"
+}
+
+// Level returns the level of the event.
+func (e FlowAlreadyRunning) Level() slog.Level {
+	return slog.LevelError
+}
+
+// Message returns a description of the event.
+func (e FlowAlreadyRunning) Message() string {
+	return fmt.Sprintf("%s: %s: Unable to start the flow. Another instance is already running. Is there a cycle in the flow logic?", e.Deployment, e.Flow)
+}
+
+// Attrs returns a set of structured log attributes for the event.
+func (e FlowAlreadyRunning) Attrs() []slog.Attr {
+	return []slog.Attr{
+		slog.String("deployment", string(e.Deployment)),
+		slog.String("flow", string(e.Flow)),
+	}
+}

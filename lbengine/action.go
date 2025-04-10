@@ -22,6 +22,7 @@ type actionEngine struct {
 	flow       flowData
 	action     actionData
 	events     lbevent.Recorder
+	state      *engineState
 }
 
 func (engine *actionEngine) Invoke(ctx context.Context) error {
@@ -39,6 +40,10 @@ func (engine *actionEngine) Invoke(ctx context.Context) error {
 	// Execute the action.
 	err := func() error {
 		switch engine.action.Definition.Type {
+		case "start-flow":
+			if err := engine.startFlow(ctx); err != nil {
+				return err
+			}
 		case "prepare-package":
 			if err := engine.preparePackage(ctx); err != nil {
 				return err
@@ -70,6 +75,31 @@ func (engine *actionEngine) Invoke(ctx context.Context) error {
 	return err
 }
 
+// startFlow starts another flow within the LeafBridge deployment.
+func (engine *actionEngine) startFlow(ctx context.Context) error {
+	flow := engine.action.Definition.Flow
+
+	// Find the requested flow within the deployment.
+	definition, found := engine.deployment.Flows[flow]
+	if !found {
+		return fmt.Errorf("the flow \"%s\" does not exist within the \"%s\" deployment", flow, engine.deployment.ID)
+	}
+
+	// Prepare the flow engine.
+	fe := flowEngine{
+		deployment: engine.deployment,
+		flow: flowData{
+			ID:         flow,
+			Definition: definition,
+		},
+		events: engine.events,
+		state:  engine.state,
+	}
+
+	// Invoke the requested flow.
+	return fe.Invoke(ctx)
+}
+
 // preparePackage performs a package preparation action as part of a
 // LeafBridge deployment.
 func (engine *actionEngine) preparePackage(ctx context.Context) error {
@@ -89,6 +119,7 @@ func (engine *actionEngine) preparePackage(ctx context.Context) error {
 			Definition: pkg,
 		},
 		events: engine.events,
+		state:  engine.state,
 	}
 
 	// Execute the prepare-package action via the package engine.
@@ -113,6 +144,7 @@ func (engine *actionEngine) invokePackage(ctx context.Context) error {
 			Definition: pkg,
 		},
 		events: engine.events,
+		state:  engine.state,
 	}
 
 	// Execute the install-package action via the package engine.
