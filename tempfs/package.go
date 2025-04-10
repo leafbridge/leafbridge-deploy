@@ -109,6 +109,32 @@ func (d ExtractionDir) MkdirAll(path string) error {
 	return nil
 }
 
+// FilePath returns the absolute file path for the requested file.
+//
+// It returns an error if the given path is not relative.
+func (d ExtractionDir) FilePath(path string) (string, error) {
+	// Localize the file path, which ensures that it conforms to the
+	// local file system path separators and is in fact a relative path.
+	localized, err := filepath.Localize(path)
+	if err != nil {
+		return "", fmt.Errorf("localization of the file path failed: %w", err)
+	}
+
+	return filepath.Join(d.path, localized), nil
+}
+
+// Stat returns a [FileInfo] describing the named file in the root.
+func (d ExtractionDir) Stat(path string) (os.FileInfo, error) {
+	// Localize the file path, which ensures that it conforms to the
+	// local file system path separators and is in fact a relative path.
+	localized, err := filepath.Localize(path)
+	if err != nil {
+		return nil, fmt.Errorf("localization of the file path failed: %w", err)
+	}
+
+	return d.dir.Stat(localized)
+}
+
 // WriteFile reads data from r and writes it to the provided relative file
 // path. It continues until the reader returns io.EOF or an error is
 // encountered.

@@ -28,7 +28,7 @@ func (e ActionStarted) Level() slog.Level {
 
 // Message returns a description of the event.
 func (e ActionStarted) Message() string {
-	return fmt.Sprintf("%s: %s: Action %d (%s): Starting action.", e.Deployment, e.Flow, e.ActionIndex+1, e.ActionType)
+	return fmt.Sprintf("%s: %s: %d: %s: Starting action.", e.Deployment, e.Flow, e.ActionIndex+1, e.ActionType)
 }
 
 // Attrs returns a set of structured log attributes for the event.
@@ -67,9 +67,9 @@ func (e ActionStopped) Level() slog.Level {
 // Message returns a description of the event.
 func (e ActionStopped) Message() string {
 	if e.Err != nil {
-		return fmt.Sprintf("%s: %s: Action %d (%s): Stopped action due to an error: %s.", e.Deployment, e.Flow, e.ActionIndex+1, e.ActionType, e.Err)
+		return fmt.Sprintf("%s: %s: %d: %s: Stopped action due to an error: %s.", e.Deployment, e.Flow, e.ActionIndex+1, e.ActionType, e.Err)
 	}
-	return fmt.Sprintf("%s: %s: Action %d (%s): Completed action.", e.Deployment, e.Flow, e.ActionIndex+1, e.ActionType)
+	return fmt.Sprintf("%s: %s: %d: %s: Completed action.", e.Deployment, e.Flow, e.ActionIndex+1, e.ActionType)
 }
 
 // Attrs returns a set of structured log attributes for the event.

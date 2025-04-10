@@ -23,7 +23,7 @@ type extractionEngine struct {
 	events     lbevent.Recorder
 }
 
-func (engine *extractionEngine) extractPackage(ctx context.Context, source stagingfs.PackageFile, destination tempfs.ExtractionDir) error {
+func (engine *extractionEngine) ExtractPackage(ctx context.Context, source stagingfs.PackageFile, destination tempfs.ExtractionDir) error {
 	// Record the time that the extraction started.
 	started := time.Now()
 

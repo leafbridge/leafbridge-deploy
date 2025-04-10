@@ -2,6 +2,7 @@ package lbengine
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/leafbridge/leafbridge-deploy/lbdeploy"
 	"github.com/leafbridge/leafbridge-deploy/lbevent"
@@ -52,12 +53,18 @@ func (engine *packageEngine) PreparePackage(ctx context.Context) error {
 
 // InvokeCommand performs a package command invocation action.
 func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy.PackageCommandID) error {
-	// Open the package file, or create it if it doesn't exist.
-	file, err := engine.openPackageFile()
-	if err != nil {
-		return err
+	// Find the command within the package.
+	commandDefinition, exists := engine.pkg.Definition.Commands[command]
+	if !exists {
+		return fmt.Errorf("the command \"%s\" does not exist within the \"%s\" package", command, engine.pkg.ID)
 	}
-	defer file.Close()
+
+	// Open the package file, or create it if it doesn't exist.
+	packageFile, err := engine.openPackageFile()
+	if err != nil {
+		return fmt.Errorf("failed to prepare package file: %w", err)
+	}
+	defer packageFile.Close()
 
 	// Prepare a download engine.
 	de := downloadEngine{
@@ -73,12 +80,54 @@ func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy
 	// skipped.
 	//
 	// If the file was partially downloaded, the download will be resumed.
-	if err := de.DownloadAndVerifyPackage(ctx, engine.pkg, file); err != nil {
+	if err := de.DownloadAndVerifyPackage(ctx, engine.pkg, packageFile); err != nil {
 		return err
 	}
 
 	// Extract the package.
-	return engine.extractPackage(ctx, file)
+
+	// Create a temporary directory to hold the extracted files.
+	extractedFiles, err := tempfs.OpenExtractionDirForPackage(lbdeploy.PackageContent{
+		ID:          engine.pkg.ID,
+		PrimaryHash: engine.pkg.Definition.Attributes.Hashes.Primary(),
+	}, tempfs.Options{
+		DeleteOnClose: true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to prepare a directory for file extraction: %w", err)
+	}
+
+	// Delete all of the extracted files when we are finished.
+	defer extractedFiles.Close()
+
+	// Prepare an extraction engine.
+	ee := extractionEngine{
+		deployment: engine.deployment,
+		flow:       engine.flow,
+		action:     engine.action,
+		events:     engine.events,
+	}
+
+	// Extract the files.
+	if err := ee.ExtractPackage(ctx, packageFile, extractedFiles); err != nil {
+		return fmt.Errorf("extraction failed: %w", err)
+	}
+
+	// Prepare a command engine.
+	ce := commandEngine{
+		deployment: engine.deployment,
+		flow:       engine.flow,
+		action:     engine.action,
+		pkg:        engine.pkg,
+		command: commandData{
+			ID:         command,
+			Definition: commandDefinition,
+		},
+		events: engine.events,
+	}
+
+	// Invoke the command.
+	return ce.Invoke(ctx, extractedFiles)
 }
 
 func (engine *packageEngine) openPackageFile() (stagingfs.PackageFile, error) {
@@ -101,30 +150,4 @@ func (engine *packageEngine) openPackageFile() (stagingfs.PackageFile, error) {
 
 	// Open the package file, or create it if it doesn't exist.
 	return packageDir.OpenFile(engine.pkg.Definition)
-}
-
-func (engine *packageEngine) extractPackage(ctx context.Context, source stagingfs.PackageFile) error {
-	// Create a temporary directory to hold the extracted files.
-	destination, err := tempfs.OpenExtractionDirForPackage(lbdeploy.PackageContent{
-		ID:          engine.pkg.ID,
-		PrimaryHash: engine.pkg.Definition.Attributes.Hashes.Primary(),
-	}, tempfs.Options{
-		DeleteOnClose: true,
-	})
-	if err != nil {
-		return err
-	}
-
-	// Delete all of the extracted files when we are finished.
-	defer destination.Close()
-
-	// Extract the files.
-	ee := extractionEngine{
-		deployment: engine.deployment,
-		flow:       engine.flow,
-		action:     engine.action,
-		events:     engine.events,
-	}
-
-	return ee.extractPackage(ctx, source, destination)
 }
