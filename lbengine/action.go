@@ -43,7 +43,10 @@ func (engine *actionEngine) Invoke(ctx context.Context) error {
 			if err := engine.preparePackage(ctx); err != nil {
 				return err
 			}
-		//case "invoke-package":
+		case "invoke-package":
+			if err := engine.invokePackage(ctx); err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("unrecognized deployment action type \"%s\"", engine.action.Definition.Type)
 		}
@@ -90,4 +93,28 @@ func (engine *actionEngine) preparePackage(ctx context.Context) error {
 
 	// Execute the prepare-package action via the package engine.
 	return pe.PreparePackage(ctx)
+}
+
+// invokePackage invokes a package command action.
+func (engine *actionEngine) invokePackage(ctx context.Context) error {
+	// Look up the package by its ID.
+	pkg, found := engine.deployment.Resources.Packages[engine.action.Definition.Package]
+	if !found {
+		return fmt.Errorf("the package \"%s\" does not exist within the \"%s\" deployment", engine.action.Definition.Package, engine.deployment.ID)
+	}
+
+	// Prepare a package engine.
+	pe := packageEngine{
+		deployment: engine.deployment,
+		flow:       engine.flow,
+		action:     engine.action,
+		pkg: packageData{
+			ID:         engine.action.Definition.Package,
+			Definition: pkg,
+		},
+		events: engine.events,
+	}
+
+	// Execute the install-package action via the package engine.
+	return pe.InvokeCommand(ctx, engine.action.Definition.Command)
 }
