@@ -50,6 +50,10 @@ type PackageType string
 type PackageFormat string
 
 // Package defines a deployment package.
+//
+// TODO: Add support for a destination directory where an archive's extracted
+// files will be extracted to. If a destination is not provided, then fall
+// back to the current approach that extracts files to a temporary directory.
 type Package struct {
 	Name       string            `json:"name,omitempty"`
 	Type       PackageType       `json:"type,omitempty"`
@@ -58,6 +62,7 @@ type Package struct {
 	Attributes FileAttributes    `json:"attributes,omitzero"`
 	Files      PackageFileMap    `json:"files,omitzero"`
 	Commands   PackageCommandMap `json:"commands,omitzero"`
+	//Destinations []DirectoryResourceID `json:"destinations,omitempty"`
 }
 
 // FileName returns a file name for the package to be downloaded.
