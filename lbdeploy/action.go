@@ -5,12 +5,14 @@ type ActionType string
 
 // Action describes an action to be taken as part of a flow.
 type Action struct {
-	Type           ActionType       `json:"action"`
-	Package        PackageID        `json:"package,omitempty"`
-	Command        PackageCommandID `json:"command,omitempty"`
-	Flow           FlowID           `json:"flow,omitempty"`
-	SourceFile     string           `json:"source-file,omitempty"`
-	DestinationDir string           `json:"destination-directory,omitempty"`
+	Type            ActionType          `json:"action"`
+	Package         PackageID           `json:"package,omitempty"`
+	Command         PackageCommandID    `json:"command,omitempty"`
+	Flow            FlowID              `json:"flow,omitempty"`
+	SourceFile      FileResourceID      `json:"source-file,omitempty"`
+	SourceDir       DirectoryResourceID `json:"source-directory,omitempty"`
+	DestinationFile FileResourceID      `json:"destination-file,omitempty"`
+	DestinationDir  DirectoryResourceID `json:"destination-directory,omitempty"`
 }
 
 /*

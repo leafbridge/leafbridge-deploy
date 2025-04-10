@@ -178,7 +178,7 @@ func (d ExtractionDir) WriteFile(path string, r io.Reader, modified time.Time) (
 		return written, err
 	}
 
-	// Preserve modification and creation dates, if available.
+	// Preserve the modification date, if available.
 	if !modified.IsZero() {
 		if err := filetime.SetFileModificationTime(file, modified); err != nil {
 			return written, fmt.Errorf("failed to set modification time: %w", err)
