@@ -8,6 +8,7 @@ type Action struct {
 	Type            ActionType          `json:"action"`
 	Package         PackageID           `json:"package,omitempty"`
 	Command         PackageCommandID    `json:"command,omitempty"`
+	Force           bool                `json:"force,omitempty"`
 	Flow            FlowID              `json:"flow,omitempty"`
 	SourceFile      FileResourceID      `json:"source-file,omitempty"`
 	SourceDir       DirectoryResourceID `json:"source-directory,omitempty"`

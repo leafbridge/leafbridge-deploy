@@ -28,6 +28,7 @@ type commandEngine struct {
 	action     actionData
 	pkg        packageData
 	command    commandData
+	apps       lbdeploy.AppEvaluation
 	events     lbevent.Recorder
 	state      *engineState
 }
@@ -91,16 +92,26 @@ func (engine *commandEngine) Invoke(ctx context.Context, files tempfs.Extraction
 		Package:     engine.pkg.ID,
 		Command:     engine.command.ID,
 		CommandLine: cmd.String(),
+		Apps:        engine.apps,
 	})
 
 	// Record the time that the command started.
 	started := time.Now()
 
-	// Start the command.
+	// Run the command.
 	err = cmd.Run()
 
 	// Record the time that the command stopped.
 	stopped := time.Now()
+
+	// Evaluate the effectiveness of any expected application changes.
+	appSummary, appSummaryErr := SummarizeAppChanges(engine.deployment.Apps, engine.apps)
+	if appSummaryErr != nil {
+		appSummaryErr = fmt.Errorf("failed to determine the state of installed applications after the command was invoked: %w", appSummaryErr)
+		if err == nil {
+			err = appSummaryErr
+		}
+	}
 
 	// Record the end of the command.
 	engine.events.Record(lbdeployevent.CommandStopped{
@@ -111,13 +122,17 @@ func (engine *commandEngine) Invoke(ctx context.Context, files tempfs.Extraction
 		Package:     engine.pkg.ID,
 		Command:     engine.command.ID,
 		CommandLine: cmd.String(),
+		AppsBefore:  engine.apps,
+		AppsAfter:   appSummary,
 		Started:     started,
 		Stopped:     stopped,
 		Err:         err,
 	})
 
 	// Wait 5 seconds to let the file system and file locks quiesce before
-	// deleting the extracted files.
+	// continuing on. This is especially important if this is the last action
+	// and LeafBridge attempts to delete extracted files immediately after
+	// this command has run.
 	//
 	// TODO: Make this delay configurable.
 	timer := time.NewTimer(time.Second * 5)
@@ -127,5 +142,12 @@ func (engine *commandEngine) Invoke(ctx context.Context, files tempfs.Extraction
 	case <-timer.C:
 	}
 
-	return err
+	// If the command returned an error, return that.
+	if err != nil {
+		return err
+	}
+
+	// If the application summary indicates that an expected change to the
+	// installed set of applications didn't take effect, return the error.
+	return appSummary.Err()
 }

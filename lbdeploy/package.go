@@ -181,7 +181,8 @@ type PackageCommandID string
 //
 // TODO: Support variable expansion when building arguments.
 type PackageCommand struct {
-	Installs   []AppID       `json:"installs,omitempty"`
+	Installs   AppList       `json:"installs,omitzero"`
+	Uninstalls AppList       `json:"uninstalls,omitzero"`
 	Executable PackageFileID `json:"executable,omitempty"`
-	Args       []string      `json:"args,omitempty"`
+	Args       []string      `json:"args,omitzero"`
 }

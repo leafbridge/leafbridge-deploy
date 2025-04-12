@@ -4,8 +4,12 @@ github.com/alecthomas/kong v1.10.0 h1:8K4rGDpT7Iu+jEXCIJUeKqvpwZHbsFRoebLbnzlmrp
 github.com/alecthomas/kong v1.10.0/go.mod h1:p2vqieVMeTAnaC83txKtXe8FLke2X07aruPWXyMPQrU=
 github.com/alecthomas/repr v0.4.0 h1:GhI2A8MACjfegCPVq9f1FLvIBS+DrQ2KQBFZP1iFzXc=
 github.com/alecthomas/repr v0.4.0/go.mod h1:Fr0507jx4eOXV7AlPV6AVZLYrLIuIeSOWtW57eE/O/4=
+github.com/gentlemanautomaton/structformat v0.0.0-20241022070736-a530f00cc986 h1:m+arUks1zVSeB+A45OFZEGAoQcuxLf1FtvpPfCqx+A4=
+github.com/gentlemanautomaton/structformat v0.0.0-20241022070736-a530f00cc986/go.mod h1:uhz3+2BrAHdd5n7dFJLhA6XlYEe9FeUVlbiczezM4do=
 github.com/gentlemanautomaton/volmgmt v0.0.0-20250409182909-ce74450cc0fc h1:qkLtSeYGDh93hLa+BLfIqdQelXJ8OREYpCSKmWlE4Po=
 github.com/gentlemanautomaton/volmgmt v0.0.0-20250409182909-ce74450cc0fc/go.mod h1:BEm8Ghsv1Rbw1HKKx5CtPCHKNJ2Qh3GaoIY5KTMixm4=
+github.com/gentlemanautomaton/winapp v0.0.0-20250412002214-a4f7f0c4cb8d h1:i1LQB0KOAfNKVk+jQFT2KeU3a2hOQZLnX50H6Jc5X00=
+github.com/gentlemanautomaton/winapp v0.0.0-20250412002214-a4f7f0c4cb8d/go.mod h1:fvQf67v9ej7Gy5px94GXdeckl4RERcmPktD+6uDIP3k=
 github.com/hexops/gotextdiff v1.0.3 h1:gitA9+qJrrTCsiCl7+kh75nPqQt1cx4ZkudSTLoUqJM=
 github.com/hexops/gotextdiff v1.0.3/go.mod h1:pSWU5MAI3yDq+fZBTazCSJysOMbxWL1BSow5/V2vxeg=
 golang.org/x/sys v0.32.0 h1:s77OFDvIQeibCmezSnk/q6iAfkdiQaJi4VzroCFrN20=

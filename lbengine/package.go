@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/leafbridge/leafbridge-deploy/lbdeploy"
+	"github.com/leafbridge/leafbridge-deploy/lbdeployevent"
 	"github.com/leafbridge/leafbridge-deploy/lbevent"
 	"github.com/leafbridge/leafbridge-deploy/stagingfs"
 	"github.com/leafbridge/leafbridge-deploy/tempfs"
@@ -59,6 +60,36 @@ func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy
 	commandDefinition, exists := engine.pkg.Definition.Commands[command]
 	if !exists {
 		return fmt.Errorf("the command \"%s\" does not exist within the \"%s\" package", command, engine.pkg.ID)
+	}
+
+	// Determine whether any app changes are anticipated.
+	appEvaluation, err := EvaluateAppChanges(engine.deployment.Apps, commandDefinition.Installs, commandDefinition.Uninstalls)
+	if err != nil {
+		return fmt.Errorf("the evaluation of potential application changes did not succeed: %w", err)
+	}
+
+	// If the command declares that it installs or uninstalls something,
+	// review the app evaluation to determine whether any application changes
+	// are anticpated.
+	if len(commandDefinition.Installs) > 0 || len(commandDefinition.Uninstalls) > 0 {
+		if !appEvaluation.ActionsNeeded() {
+			// If all app installs and uninstalls are already in effect,
+			// and command invocation isn't forced, skip this command.
+			if !engine.action.Definition.Force {
+				// Record that this command is being skipped.
+				engine.events.Record(lbdeployevent.CommandSkipped{
+					Deployment:  engine.deployment.ID,
+					Flow:        engine.flow.ID,
+					ActionIndex: engine.action.Index,
+					ActionType:  engine.action.Definition.Type,
+					Package:     engine.pkg.ID,
+					Command:     command,
+					Apps:        appEvaluation,
+				})
+
+				return nil
+			}
+		}
 	}
 
 	// Check the state to see whether we've already downloaded, verified and
@@ -137,6 +168,7 @@ func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy
 			ID:         command,
 			Definition: commandDefinition,
 		},
+		apps:   appEvaluation,
 		events: engine.events,
 		state:  engine.state,
 	}

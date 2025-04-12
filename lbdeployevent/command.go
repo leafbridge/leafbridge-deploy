@@ -3,10 +3,72 @@ package lbdeployevent
 import (
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
+	"github.com/gentlemanautomaton/structformat"
+	"github.com/gentlemanautomaton/structformat/fieldformat"
 	"github.com/leafbridge/leafbridge-deploy/lbdeploy"
 )
+
+// CommandSkipped is an event that occurs when a command is skipped.
+type CommandSkipped struct {
+	Deployment  lbdeploy.DeploymentID
+	Flow        lbdeploy.FlowID
+	ActionIndex int
+	ActionType  lbdeploy.ActionType
+	Package     lbdeploy.PackageID
+	Command     lbdeploy.PackageCommandID
+	Apps        lbdeploy.AppEvaluation
+}
+
+// Component identifies the component that generated the event.
+func (e CommandSkipped) Component() string {
+	return "command"
+}
+
+// Level returns the level of the event.
+func (e CommandSkipped) Level() slog.Level {
+	return slog.LevelInfo
+}
+
+// Message returns a description of the event.
+func (e CommandSkipped) Message() string {
+	var builder structformat.Builder
+
+	builder.WritePrimary(string(e.Deployment))
+	builder.WritePrimary(string(e.Flow))
+	builder.WritePrimary(strconv.Itoa(e.ActionIndex + 1))
+	builder.WritePrimary(fmt.Sprintf("Invoke %s.%s", e.Package, e.Command))
+	builder.WriteStandard("Skipped command")
+	if len(e.Apps.AlreadyInstalled) > 0 {
+		builder.WriteNote(fmt.Sprintf("[%s]", e.Apps.AlreadyInstalled), fieldformat.Label("already installed"))
+	}
+	if len(e.Apps.AlreadyUninstalled) > 0 {
+		builder.WriteNote(fmt.Sprintf("[%s]", e.Apps.AlreadyUninstalled), fieldformat.Label("already uninstalled"))
+	}
+
+	return builder.String()
+}
+
+// Attrs returns a set of structured log attributes for the event.
+func (e CommandSkipped) Attrs() []slog.Attr {
+	attrs := []slog.Attr{
+		slog.String("deployment", string(e.Deployment)),
+		slog.String("flow", string(e.Flow)),
+		slog.Group("action", "index", e.ActionIndex, "type", e.ActionType),
+		slog.String("package", string(e.Package)),
+		slog.Group("command", "id", e.Command),
+	}
+	if !e.Apps.IsZero() {
+		attrs = append(attrs, slog.Group("affected-apps",
+			"already-installed", e.Apps.AlreadyInstalled,
+			"already-uninstalled", e.Apps.AlreadyUninstalled,
+			"to-install", e.Apps.ToInstall,
+			"to-uninstall", e.Apps.ToUninstall))
+	}
+	return attrs
+}
 
 // CommandStarted is an event that occurs when a command has started.
 type CommandStarted struct {
@@ -17,6 +79,7 @@ type CommandStarted struct {
 	Package     lbdeploy.PackageID
 	Command     lbdeploy.PackageCommandID
 	CommandLine string
+	Apps        lbdeploy.AppEvaluation
 }
 
 // Component identifies the component that generated the event.
@@ -31,24 +94,44 @@ func (e CommandStarted) Level() slog.Level {
 
 // Message returns a description of the event.
 func (e CommandStarted) Message() string {
-	return fmt.Sprintf("%s: %s: %d: Invoke %s.%s: Starting command: %s",
-		e.Deployment,
-		e.Flow,
-		e.ActionIndex+1,
-		e.Package,
-		e.Command,
-		e.CommandLine)
+	var builder structformat.Builder
+
+	builder.WritePrimary(string(e.Deployment))
+	builder.WritePrimary(string(e.Flow))
+	builder.WritePrimary(strconv.Itoa(e.ActionIndex + 1))
+	builder.WritePrimary(fmt.Sprintf("Invoke %s.%s", e.Package, e.Command))
+	switch installs, uninstalls := len(e.Apps.ToInstall), len(e.Apps.ToUninstall); {
+	case installs > 0 && uninstalls > 0:
+		builder.WritePrimary(fmt.Sprintf("Starting command to install %s and uninstall %s", e.Apps.ToInstall, e.Apps.ToUninstall))
+	case installs > 0 && uninstalls > 0:
+		builder.WritePrimary(fmt.Sprintf("Starting command to install %s", e.Apps.ToInstall))
+	case uninstalls > 0:
+		builder.WritePrimary(fmt.Sprintf("Starting command to uninstall %s", e.Apps.ToUninstall))
+	default:
+		builder.WritePrimary("Starting command")
+	}
+	builder.WriteStandard(e.CommandLine)
+
+	return builder.String()
 }
 
 // Attrs returns a set of structured log attributes for the event.
 func (e CommandStarted) Attrs() []slog.Attr {
-	return []slog.Attr{
+	attrs := []slog.Attr{
 		slog.String("deployment", string(e.Deployment)),
 		slog.String("flow", string(e.Flow)),
 		slog.Group("action", "index", e.ActionIndex, "type", e.ActionType),
 		slog.String("package", string(e.Package)),
 		slog.Group("command", "id", e.Command, "invocation", e.CommandLine),
 	}
+	if !e.Apps.IsZero() {
+		attrs = append(attrs, slog.Group("affected-apps",
+			"already-installed", e.Apps.AlreadyInstalled,
+			"already-uninstalled", e.Apps.AlreadyUninstalled,
+			"to-install", e.Apps.ToInstall,
+			"to-uninstall", e.Apps.ToUninstall))
+	}
+	return attrs
 }
 
 // CommandStopped is an event that occurs when a command has stopped.
@@ -60,6 +143,8 @@ type CommandStopped struct {
 	Package     lbdeploy.PackageID
 	Command     lbdeploy.PackageCommandID
 	CommandLine string
+	AppsBefore  lbdeploy.AppEvaluation
+	AppsAfter   lbdeploy.AppSummary
 	Started     time.Time
 	Stopped     time.Time
 	Err         error
@@ -72,7 +157,7 @@ func (e CommandStopped) Component() string {
 
 // Level returns the level of the event.
 func (e CommandStopped) Level() slog.Level {
-	if e.Err != nil {
+	if e.Err != nil || e.AppsAfter.Err() != nil {
 		return slog.LevelError
 	}
 	return slog.LevelInfo
@@ -80,24 +165,22 @@ func (e CommandStopped) Level() slog.Level {
 
 // Message returns a description of the event.
 func (e CommandStopped) Message() string {
-	duration := e.Duration().Round(time.Millisecond * 10)
+	var builder structformat.Builder
+
+	builder.WritePrimary(string(e.Deployment))
+	builder.WritePrimary(string(e.Flow))
+	builder.WritePrimary(strconv.Itoa(e.ActionIndex + 1))
+	builder.WritePrimary(fmt.Sprintf("Invoke %s.%s", e.Package, e.Command))
 	if e.Err != nil {
-		return fmt.Sprintf("%s: %s: %d: Invoke %s.%s: Stopped command due to an error: %s. (%s)",
-			e.Deployment,
-			e.Flow,
-			e.ActionIndex+1,
-			e.Package,
-			e.Command,
-			e.Err,
-			duration)
+		builder.WriteStandard(fmt.Sprintf("Stopped command due to an error: %s", e.Err))
+	} else if err := e.AppsAfter.Err(); err != nil {
+		builder.WriteStandard(fmt.Sprintf("Completed command but %s", err))
+	} else {
+		builder.WriteStandard(fmt.Sprintf("Completed command"))
 	}
-	return fmt.Sprintf("%s: %s: %d: Invoke %s.%s: Completed command. (%s)",
-		e.Deployment,
-		e.Flow,
-		e.ActionIndex+1,
-		e.Package,
-		e.Command,
-		duration)
+	builder.WriteNote(e.Duration().Round(time.Millisecond * 10).String())
+
+	return builder.String()
 }
 
 // Attrs returns a set of structured log attributes for the event.
@@ -111,8 +194,26 @@ func (e CommandStopped) Attrs() []slog.Attr {
 		slog.Time("started", e.Started),
 		slog.Time("stopped", e.Stopped),
 	}
-	if e.Err != nil {
-		attrs = append(attrs, slog.String("error", e.Err.Error()))
+	if !e.AppsBefore.IsZero() {
+		attrs = append(attrs, slog.Group("affected-apps-before",
+			"already-installed", e.AppsBefore.AlreadyInstalled,
+			"already-uninstalled", e.AppsBefore.AlreadyUninstalled,
+			"to-install", e.AppsBefore.ToInstall,
+			"to-uninstall", e.AppsBefore.ToUninstall))
+	}
+	if !e.AppsAfter.IsZero() {
+		attrs = append(attrs, slog.Group("affected-apps-after",
+			"installed", e.AppsAfter.Installed,
+			"uninstalled", e.AppsAfter.Uninstalled,
+			"still-not-installed", e.AppsAfter.StillNotInstalled,
+			"still-not-uninstalled", e.AppsAfter.StillNotUninstalled))
+	}
+	err := e.Err
+	if err == nil {
+		err = e.AppsAfter.Err()
+	}
+	if err != nil {
+		attrs = append(attrs, slog.String("error", err.Error()))
 	}
 	return attrs
 }
