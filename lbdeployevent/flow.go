@@ -38,6 +38,13 @@ func (e FlowStarted) Message() string {
 	return builder.String()
 }
 
+// Details returns additional details about the event. It might include
+// multiple lines of text. An empty string is returned when no details
+// are available.
+func (e FlowStarted) Details() string {
+	return ""
+}
+
 // Attrs returns a set of structured log attributes for the event.
 func (e FlowStarted) Attrs() []slog.Attr {
 	return []slog.Attr{
@@ -82,6 +89,13 @@ func (e FlowStopped) Message() string {
 	builder.WriteNote(e.Duration().Round(time.Millisecond * 10).String())
 
 	return builder.String()
+}
+
+// Details returns additional details about the event. It might include
+// multiple lines of text. An empty string is returned when no details
+// are available.
+func (e FlowStopped) Details() string {
+	return ""
 }
 
 // Attrs returns a set of structured log attributes for the event.
@@ -138,6 +152,13 @@ func (e FlowLockNotAcquired) Message() string {
 	return builder.String()
 }
 
+// Details returns additional details about the event. It might include
+// multiple lines of text. An empty string is returned when no details
+// are available.
+func (e FlowLockNotAcquired) Details() string {
+	return ""
+}
+
 // Attrs returns a set of structured log attributes for the event.
 func (e FlowLockNotAcquired) Attrs() []slog.Attr {
 	attrs := []slog.Attr{
@@ -180,6 +201,13 @@ func (e FlowAlreadyRunning) Message() string {
 	builder.WriteStandard("Unable to start the flow. Another instance is already running. Is there a cycle in the flow logic?")
 
 	return builder.String()
+}
+
+// Details returns additional details about the event. It might include
+// multiple lines of text. An empty string is returned when no details
+// are available.
+func (e FlowAlreadyRunning) Details() string {
+	return ""
 }
 
 // Attrs returns a set of structured log attributes for the event.

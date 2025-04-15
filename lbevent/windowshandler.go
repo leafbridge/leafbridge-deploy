@@ -45,11 +45,11 @@ func NewWindowsHandler() (WindowsHandler, error) {
 func (h WindowsHandler) Handle(r Record) error {
 	switch level := r.Level(); {
 	case level >= slog.LevelError:
-		return h.elog.Error(300, r.Message())
+		return h.elog.Error(300, eventMessageWithDetails(r))
 	case level >= slog.LevelWarn:
-		return h.elog.Warning(200, r.Message())
+		return h.elog.Warning(200, eventMessageWithDetails(r))
 	case level >= slog.LevelInfo:
-		return h.elog.Info(100, r.Message())
+		return h.elog.Info(100, eventMessageWithDetails(r))
 	default:
 		return nil // Drop debug messages.
 	}
@@ -78,4 +78,12 @@ func IsWindowsEventSourceRegistered(eventSource string) (bool, error) {
 	defer key.Close()
 
 	return true, nil
+}
+
+func eventMessageWithDetails(r Record) string {
+	message := r.Message()
+	if details := r.Details(); details != "" {
+		return fmt.Sprintf("%s\n\n%s", message, details)
+	}
+	return message
 }

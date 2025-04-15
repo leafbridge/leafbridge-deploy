@@ -41,6 +41,13 @@ func (e ActionStarted) Message() string {
 	return builder.String()
 }
 
+// Details returns additional details about the event. It might include
+// multiple lines of text. An empty string is returned when no details
+// are available.
+func (e ActionStarted) Details() string {
+	return ""
+}
+
 // Attrs returns a set of structured log attributes for the event.
 func (e ActionStarted) Attrs() []slog.Attr {
 	return []slog.Attr{
@@ -90,6 +97,13 @@ func (e ActionStopped) Message() string {
 	builder.WriteNote(e.Duration().Round(time.Millisecond * 10).String())
 
 	return builder.String()
+}
+
+// Details returns additional details about the event. It might include
+// multiple lines of text. An empty string is returned when no details
+// are available.
+func (e ActionStopped) Details() string {
+	return ""
 }
 
 // Attrs returns a set of structured log attributes for the event.

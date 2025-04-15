@@ -49,6 +49,13 @@ func (e DownloadStarted) Message() string {
 	return builder.String()
 }
 
+// Details returns additional details about the event. It might include
+// multiple lines of text. An empty string is returned when no details
+// are available.
+func (e DownloadStarted) Details() string {
+	return ""
+}
+
 // Attrs returns a set of structured log attributes for the event.
 func (e DownloadStarted) Attrs() []slog.Attr {
 	return []slog.Attr{
@@ -118,6 +125,13 @@ func (e DownloadStopped) Message() string {
 	}
 
 	return builder.String()
+}
+
+// Details returns additional details about the event. It might include
+// multiple lines of text. An empty string is returned when no details
+// are available.
+func (e DownloadStopped) Details() string {
+	return ""
 }
 
 // Attrs returns a set of structured log attributes for the event.
@@ -225,6 +239,13 @@ func (e DownloadReset) Message() string {
 	}
 
 	return builder.String()
+}
+
+// Details returns additional details about the event. It might include
+// multiple lines of text. An empty string is returned when no details
+// are available.
+func (e DownloadReset) Details() string {
+	return ""
 }
 
 // Attrs returns a set of structured log attributes for the event.

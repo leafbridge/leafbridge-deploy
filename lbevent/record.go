@@ -53,6 +53,13 @@ func (r RecordOf[T]) Message() string {
 	return r.Event.Message()
 }
 
+// Details returns additional details about the event. It might include
+// multiple lines of text. An empty string is returned when no details
+// are available.
+func (r RecordOf[T]) Details() string {
+	return r.Event.Details()
+}
+
 // Attrs returns a set of structured logging attributes for the event.
 func (r RecordOf[T]) Attrs() []slog.Attr {
 	return r.Event.Attrs()

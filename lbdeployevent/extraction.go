@@ -78,6 +78,13 @@ func (e ExtractionStarted) Message() string {
 	return builder.String()
 }
 
+// Details returns additional details about the event. It might include
+// multiple lines of text. An empty string is returned when no details
+// are available.
+func (e ExtractionStarted) Details() string {
+	return ""
+}
+
 // Attrs returns a set of structured log attributes for the event.
 func (e ExtractionStarted) Attrs() []slog.Attr {
 	return []slog.Attr{
@@ -141,6 +148,13 @@ func (e ExtractionStopped) Message() string {
 	return builder.String()
 }
 
+// Details returns additional details about the event. It might include
+// multiple lines of text. An empty string is returned when no details
+// are available.
+func (e ExtractionStopped) Details() string {
+	return ""
+}
+
 // Attrs returns a set of structured log attributes for the event.
 func (e ExtractionStopped) Attrs() []slog.Attr {
 	attrs := []slog.Attr{
@@ -202,6 +216,13 @@ func (e ExtractedFile) Message() string {
 		return fmt.Sprintf("Extract: File %d: %s: Failed: %s. (%d %s, %s, %s mbps)", e.FileNumber, e.Path, e.Err, e.FileSize, plural(e.FileSize, "byte", "bytes"), duration, e.BitrateInMbps())
 	}
 	return fmt.Sprintf("Extract: File %d: %s: Completed. (%d %s, %s, %s mbps)", e.FileNumber, e.Path, e.FileSize, plural(e.FileSize, "byte", "bytes"), duration, e.BitrateInMbps())
+}
+
+// Details returns additional details about the event. It might include
+// multiple lines of text. An empty string is returned when no details
+// are available.
+func (e ExtractedFile) Details() string {
+	return ""
 }
 
 // Attrs returns a set of structured log attributes for the event.

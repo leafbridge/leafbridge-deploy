@@ -52,6 +52,13 @@ func (e CommandSkipped) Message() string {
 	return builder.String()
 }
 
+// Details returns additional details about the event. It might include
+// multiple lines of text. An empty string is returned when no details
+// are available.
+func (e CommandSkipped) Details() string {
+	return ""
+}
+
 // Attrs returns a set of structured log attributes for the event.
 func (e CommandSkipped) Attrs() []slog.Attr {
 	attrs := []slog.Attr{
@@ -115,6 +122,13 @@ func (e CommandStarted) Message() string {
 	builder.WriteStandard(e.CommandLine)
 
 	return builder.String()
+}
+
+// Details returns additional details about the event. It might include
+// multiple lines of text. An empty string is returned when no details
+// are available.
+func (e CommandStarted) Details() string {
+	return ""
 }
 
 // Attrs returns a set of structured log attributes for the event.
@@ -188,9 +202,14 @@ func (e CommandStopped) Message() string {
 }
 
 // Details returns additional details about the event. It might include
-// multiple lines of text.
+// multiple lines of text. An empty string is returned when no details
+// are available.
 func (e CommandStopped) Details() string {
-	return e.Output
+	if e.Output == "" {
+		return ""
+	}
+
+	return fmt.Sprintf("%s\n%s", e.CommandLine, e.Output)
 }
 
 // Attrs returns a set of structured log attributes for the event.

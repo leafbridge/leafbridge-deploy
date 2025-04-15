@@ -66,6 +66,13 @@ func (e FileVerification) Message() string {
 	return builder.String()
 }
 
+// Details returns additional details about the event. It might include
+// multiple lines of text. An empty string is returned when no details
+// are available.
+func (e FileVerification) Details() string {
+	return ""
+}
+
 // Attrs returns a set of structured log attributes for the event.
 func (e FileVerification) Attrs() []slog.Attr {
 	attrs := []slog.Attr{
@@ -142,6 +149,13 @@ func (e FileCopy) Message() string {
 	}
 
 	return builder.String()
+}
+
+// Details returns additional details about the event. It might include
+// multiple lines of text. An empty string is returned when no details
+// are available.
+func (e FileCopy) Details() string {
+	return ""
 }
 
 // Attrs returns a set of structured log attributes for the event.

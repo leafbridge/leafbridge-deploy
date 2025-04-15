@@ -17,6 +17,11 @@ type Interface interface {
 	// Message returns a description of the event.
 	Message() string
 
+	// Details returns additional details about the event. It might include
+	// multiple lines of text. An empty string is returned when no details
+	// are available.
+	Details() string
+
 	// Attrs returns a set of structured logging attributes for the event.
 	Attrs() []slog.Attr
 }
