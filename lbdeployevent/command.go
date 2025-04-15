@@ -145,6 +145,7 @@ type CommandStopped struct {
 	Package     lbdeploy.PackageID
 	Command     lbdeploy.PackageCommandID
 	CommandLine string
+	Output      string
 	AppsBefore  lbdeploy.AppEvaluation
 	AppsAfter   lbdeploy.AppSummary
 	Started     time.Time
@@ -186,6 +187,12 @@ func (e CommandStopped) Message() string {
 	return builder.String()
 }
 
+// Details returns additional details about the event. It might include
+// multiple lines of text.
+func (e CommandStopped) Details() string {
+	return e.Output
+}
+
 // Attrs returns a set of structured log attributes for the event.
 func (e CommandStopped) Attrs() []slog.Attr {
 	attrs := []slog.Attr{
@@ -210,6 +217,9 @@ func (e CommandStopped) Attrs() []slog.Attr {
 			"uninstalled", e.AppsAfter.Uninstalled,
 			"still-not-installed", e.AppsAfter.StillNotInstalled,
 			"still-not-uninstalled", e.AppsAfter.StillNotUninstalled))
+	}
+	if e.Output != "" {
+		attrs = append(attrs, slog.String("output", e.Output))
 	}
 	err := e.Err
 	if err == nil {

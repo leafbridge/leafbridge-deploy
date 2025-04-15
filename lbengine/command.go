@@ -1,14 +1,17 @@
 package lbengine
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
 
+	"github.com/leafbridge/leafbridge-deploy/internal/mergereader"
 	"github.com/leafbridge/leafbridge-deploy/lbdeploy"
 	"github.com/leafbridge/leafbridge-deploy/lbdeployevent"
 	"github.com/leafbridge/leafbridge-deploy/lbevent"
@@ -79,9 +82,16 @@ func (engine *commandEngine) Invoke(ctx context.Context, files tempfs.Extraction
 	// TODO: Make this configurable.
 	cmd.WaitDelay = time.Minute
 
-	// Send the command's output to stdout and stderr for now.
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// Prepare two sets of output pipes for the command.
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
 
 	// Record the start of the command.
 	engine.events.Record(lbdeployevent.CommandStarted{
@@ -95,11 +105,31 @@ func (engine *commandEngine) Invoke(ctx context.Context, files tempfs.Extraction
 		Apps:        engine.apps,
 	})
 
+	// Prepare a buffer to hold the combined command output.
+	var output bytes.Buffer
+
 	// Record the time that the command started.
 	started := time.Now()
 
-	// Run the command.
-	err = cmd.Run()
+	// Start the command.
+	err = cmd.Start()
+
+	// If the command started successfully, send its output to stdout and
+	// stderr as well as the output buffer, then wait for it to finish.
+	if err == nil {
+		// Tee stdout and stderr to the console.
+		r1 := io.TeeReader(stdout, os.Stdout)
+		r2 := io.TeeReader(stderr, os.Stderr)
+
+		// Combine the output of both stdout and stderr.
+		merged := mergereader.New(r1, r2)
+
+		// Read the combined output from the command.
+		io.Copy(&output, merged)
+
+		// Wait for the command to be completed.
+		err = cmd.Wait()
+	}
 
 	// Record the time that the command stopped.
 	stopped := time.Now()
@@ -122,6 +152,7 @@ func (engine *commandEngine) Invoke(ctx context.Context, files tempfs.Extraction
 		Package:     engine.pkg.ID,
 		Command:     engine.command.ID,
 		CommandLine: cmd.String(),
+		Output:      output.String(),
 		AppsBefore:  engine.apps,
 		AppsAfter:   appSummary,
 		Started:     started,
