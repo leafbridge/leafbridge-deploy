@@ -3,8 +3,10 @@ package lbdeployevent
 import (
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
+	"github.com/gentlemanautomaton/structformat"
 	"github.com/leafbridge/leafbridge-deploy/lbdeploy"
 )
 
@@ -28,7 +30,15 @@ func (e ActionStarted) Level() slog.Level {
 
 // Message returns a description of the event.
 func (e ActionStarted) Message() string {
-	return fmt.Sprintf("%s: %s: %d: %s: Starting action.", e.Deployment, e.Flow, e.ActionIndex+1, e.ActionType)
+	var builder structformat.Builder
+
+	builder.WritePrimary(string(e.Deployment))
+	builder.WritePrimary(string(e.Flow))
+	builder.WritePrimary(strconv.Itoa(e.ActionIndex + 1))
+	builder.WritePrimary(string(e.ActionType))
+	builder.WriteStandard("Starting action")
+
+	return builder.String()
 }
 
 // Attrs returns a set of structured log attributes for the event.
@@ -66,10 +76,20 @@ func (e ActionStopped) Level() slog.Level {
 
 // Message returns a description of the event.
 func (e ActionStopped) Message() string {
+	var builder structformat.Builder
+
+	builder.WritePrimary(string(e.Deployment))
+	builder.WritePrimary(string(e.Flow))
+	builder.WritePrimary(strconv.Itoa(e.ActionIndex + 1))
+	builder.WritePrimary(string(e.ActionType))
 	if e.Err != nil {
-		return fmt.Sprintf("%s: %s: %d: %s: Stopped action due to an error: %s.", e.Deployment, e.Flow, e.ActionIndex+1, e.ActionType, e.Err)
+		builder.WriteStandard(fmt.Sprintf("Stopped action due to an error: %s", e.Err))
+	} else {
+		builder.WriteStandard(fmt.Sprintf("Completed action"))
 	}
-	return fmt.Sprintf("%s: %s: %d: %s: Completed action.", e.Deployment, e.Flow, e.ActionIndex+1, e.ActionType)
+	builder.WriteNote(e.Duration().Round(time.Millisecond * 10).String())
+
+	return builder.String()
 }
 
 // Attrs returns a set of structured log attributes for the event.

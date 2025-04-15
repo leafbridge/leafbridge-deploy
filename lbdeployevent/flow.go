@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/gentlemanautomaton/structformat"
 	"github.com/leafbridge/leafbridge-deploy/lbdeploy"
 )
 
@@ -28,7 +29,13 @@ func (e FlowStarted) Level() slog.Level {
 
 // Message returns a description of the event.
 func (e FlowStarted) Message() string {
-	return fmt.Sprintf("%s: %s: Starting invocation.", e.Deployment, e.Flow)
+	var builder structformat.Builder
+
+	builder.WritePrimary(string(e.Deployment))
+	builder.WritePrimary(string(e.Flow))
+	builder.WriteStandard(fmt.Sprintf("Starting invocation"))
+
+	return builder.String()
 }
 
 // Attrs returns a set of structured log attributes for the event.
@@ -63,10 +70,18 @@ func (e FlowStopped) Level() slog.Level {
 
 // Message returns a description of the event.
 func (e FlowStopped) Message() string {
+	var builder structformat.Builder
+
+	builder.WritePrimary(string(e.Deployment))
+	builder.WritePrimary(string(e.Flow))
 	if e.Err != nil {
-		return fmt.Sprintf("%s: %s: Stopped invocation due to an error: %s.", e.Deployment, e.Flow, e.Err)
+		builder.WriteStandard(fmt.Sprintf("Stopped invocation due to an error: %s.", e.Err))
+	} else {
+		builder.WriteStandard("Completed invocation.")
 	}
-	return fmt.Sprintf("%s: %s: Completed invocation.", e.Deployment, e.Flow)
+	builder.WriteNote(e.Duration().Round(time.Millisecond * 10).String())
+
+	return builder.String()
 }
 
 // Attrs returns a set of structured log attributes for the event.
@@ -109,10 +124,18 @@ func (e FlowLockNotAcquired) Level() slog.Level {
 
 // Message returns a description of the event.
 func (e FlowLockNotAcquired) Message() string {
+	var builder structformat.Builder
+
+	builder.WritePrimary(string(e.Deployment))
+	builder.WritePrimary(string(e.Flow))
 	if e.Err != nil {
-		return fmt.Sprintf("%s: %s: Unable to start the flow: %s.", e.Deployment, e.Flow, e.Err)
+		builder.WriteStandard(fmt.Sprintf("Unable to start the flow: %s", e.Err))
+	} else {
+		builder.WriteStandard(fmt.Sprintf("Unable to start the flow: The %s lock could not be acquired.", e.Lock))
+		builder.WriteStandard("Completed invocation.")
 	}
-	return fmt.Sprintf("%s: %s: Unable to start the flow. The %s lock could not be acquired.", e.Deployment, e.Flow, e.Lock)
+
+	return builder.String()
 }
 
 // Attrs returns a set of structured log attributes for the event.
@@ -150,7 +173,13 @@ func (e FlowAlreadyRunning) Level() slog.Level {
 
 // Message returns a description of the event.
 func (e FlowAlreadyRunning) Message() string {
-	return fmt.Sprintf("%s: %s: Unable to start the flow. Another instance is already running. Is there a cycle in the flow logic?", e.Deployment, e.Flow)
+	var builder structformat.Builder
+
+	builder.WritePrimary(string(e.Deployment))
+	builder.WritePrimary(string(e.Flow))
+	builder.WriteStandard("Unable to start the flow. Another instance is already running. Is there a cycle in the flow logic?")
+
+	return builder.String()
 }
 
 // Attrs returns a set of structured log attributes for the event.

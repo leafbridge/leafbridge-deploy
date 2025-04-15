@@ -192,13 +192,14 @@ func (engine *downloadEngine) downloadPackageFromSource(ctx context.Context, sou
 
 	// Record the start of the download.
 	engine.events.Record(lbdeployevent.DownloadStarted{
-		Deployment: engine.deployment.ID,
-		Flow:       engine.flow.ID,
-		Action:     engine.action.Definition.Type,
-		Source:     source,
-		FileName:   file.Name,
-		Path:       file.Path,
-		Offset:     offset,
+		Deployment:  engine.deployment.ID,
+		Flow:        engine.flow.ID,
+		ActionIndex: engine.action.Index,
+		ActionType:  engine.action.Definition.Type,
+		Source:      source,
+		FileName:    file.Name,
+		Path:        file.Path,
+		Offset:      offset,
 	})
 
 	// Download the file, writing to both the file and the verifier.
@@ -235,17 +236,18 @@ func (engine *downloadEngine) downloadPackageFromSource(ctx context.Context, sou
 
 	// Record the end of the download.
 	engine.events.Record(lbdeployevent.DownloadStopped{
-		Deployment: engine.deployment.ID,
-		Flow:       engine.flow.ID,
-		Action:     engine.action.Definition.Type,
-		Source:     source,
-		FileName:   file.Name,
-		Path:       file.Path,
-		Downloaded: downloaded,
-		FileSize:   offset + downloaded,
-		Started:    started,
-		Stopped:    stopped,
-		Err:        err,
+		Deployment:  engine.deployment.ID,
+		Flow:        engine.flow.ID,
+		ActionIndex: engine.action.Index,
+		ActionType:  engine.action.Definition.Type,
+		Source:      source,
+		FileName:    file.Name,
+		Path:        file.Path,
+		Downloaded:  downloaded,
+		FileSize:    offset + downloaded,
+		Started:     started,
+		Stopped:     stopped,
+		Err:         err,
 	})
 
 	return err
@@ -254,13 +256,14 @@ func (engine *downloadEngine) downloadPackageFromSource(ctx context.Context, sou
 func (engine *downloadEngine) resetFileDownload(source lbdeploy.PackageSource, file stagingfs.PackageFile, verifier *FileVerifier, reason lbdeployevent.DownloadResetReason) error {
 	// Record the reset of the download.
 	engine.events.Record(lbdeployevent.DownloadReset{
-		Deployment: engine.deployment.ID,
-		Flow:       engine.flow.ID,
-		Action:     engine.action.Definition.Type,
-		Source:     source,
-		FileName:   file.Name,
-		Path:       file.Path,
-		Reason:     reason,
+		Deployment:  engine.deployment.ID,
+		Flow:        engine.flow.ID,
+		ActionIndex: engine.action.Index,
+		ActionType:  engine.action.Definition.Type,
+		Source:      source,
+		FileName:    file.Name,
+		Path:        file.Path,
+		Reason:      reason,
 	})
 
 	// Seek to the beginning of the file.
