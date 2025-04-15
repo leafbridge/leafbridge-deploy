@@ -129,7 +129,8 @@ func (engine *fileEngine) CopyFile(ctx context.Context) error {
 	engine.events.Record(lbdeployevent.FileCopy{
 		Deployment:      engine.deployment.ID,
 		Flow:            engine.flow.ID,
-		Action:          engine.action.Definition.Type,
+		ActionIndex:     engine.action.Index,
+		ActionType:      engine.action.Definition.Type,
 		SourceID:        sourceFileID,
 		SourcePath:      sourceFilePath,
 		DestinationID:   destFileID,

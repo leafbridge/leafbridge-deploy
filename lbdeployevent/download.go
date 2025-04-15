@@ -39,7 +39,7 @@ func (e DownloadStarted) Message() string {
 	builder.WritePrimary(string(e.Deployment))
 	builder.WritePrimary(string(e.Flow))
 	builder.WritePrimary(strconv.Itoa(e.ActionIndex + 1))
-	builder.WritePrimary(string(e.ActionType))
+	builder.WritePrimary("download-package")
 	if e.Offset > 0 {
 		builder.WriteStandard(fmt.Sprintf("Resuming download of \"%s\" from \"%s\" at offset %d.", e.FileName, e.Source.URL, e.Offset))
 	} else {
@@ -99,7 +99,7 @@ func (e DownloadStopped) Message() string {
 	builder.WritePrimary(string(e.Deployment))
 	builder.WritePrimary(string(e.Flow))
 	builder.WritePrimary(strconv.Itoa(e.ActionIndex + 1))
-	builder.WritePrimary(string(e.ActionType))
+	builder.WritePrimary("download-package")
 	if e.Err != nil {
 		if e.Downloaded > 0 {
 			builder.WriteStandard(fmt.Sprintf("The download of \"%s\" from \"%s\" failed after receiving %d %s over %s (%s mbps) due to an error: %s.",

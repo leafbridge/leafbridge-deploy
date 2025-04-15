@@ -3,8 +3,10 @@ package lbdeployevent
 import (
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
+	"github.com/gentlemanautomaton/structformat"
 	"github.com/leafbridge/leafbridge-deploy/lbdeploy"
 )
 
@@ -46,7 +48,8 @@ func (stats ExtractionStats) String() string {
 type ExtractionStarted struct {
 	Deployment      lbdeploy.DeploymentID
 	Flow            lbdeploy.FlowID
-	Action          lbdeploy.ActionType
+	ActionIndex     int
+	ActionType      lbdeploy.ActionType
 	SourcePath      string
 	DestinationPath string
 	SourceStats     ExtractionStats
@@ -64,7 +67,15 @@ func (e ExtractionStarted) Level() slog.Level {
 
 // Message returns a description of the event.
 func (e ExtractionStarted) Message() string {
-	return fmt.Sprintf("Starting extraction of %s contained in the \"%s\" archive to \"%s\".", e.SourceStats, e.SourcePath, e.DestinationPath)
+	var builder structformat.Builder
+
+	builder.WritePrimary(string(e.Deployment))
+	builder.WritePrimary(string(e.Flow))
+	builder.WritePrimary(strconv.Itoa(e.ActionIndex + 1))
+	builder.WritePrimary("extract-package")
+	builder.WriteStandard(fmt.Sprintf("Starting extraction of %s contained in the \"%s\" archive to \"%s\".", e.SourceStats, e.SourcePath, e.DestinationPath))
+
+	return builder.String()
 }
 
 // Attrs returns a set of structured log attributes for the event.
@@ -72,7 +83,7 @@ func (e ExtractionStarted) Attrs() []slog.Attr {
 	return []slog.Attr{
 		slog.String("deployment", string(e.Deployment)),
 		slog.String("flow", string(e.Flow)),
-		slog.String("action", string(e.Action)),
+		slog.Group("action", "index", e.ActionIndex, "type", e.ActionType),
 		slog.Group("source", "path", e.SourcePath, slog.Group("stats", "files", e.SourceStats.Files, "directories", e.SourceStats.Directories, "total-bytes", e.SourceStats.TotalBytes)),
 		slog.Group("destination", "path", e.DestinationPath),
 	}
@@ -83,7 +94,8 @@ func (e ExtractionStarted) Attrs() []slog.Attr {
 type ExtractionStopped struct {
 	Deployment       lbdeploy.DeploymentID
 	Flow             lbdeploy.FlowID
-	Action           lbdeploy.ActionType
+	ActionIndex      int
+	ActionType       lbdeploy.ActionType
 	SourcePath       string
 	DestinationPath  string
 	SourceStats      ExtractionStats
@@ -108,14 +120,25 @@ func (e ExtractionStopped) Level() slog.Level {
 
 // Message returns a description of the event.
 func (e ExtractionStopped) Message() string {
+	var builder structformat.Builder
+
 	duration := e.Duration().Round(time.Millisecond * 10)
+
+	builder.WritePrimary(string(e.Deployment))
+	builder.WritePrimary(string(e.Flow))
+	builder.WritePrimary(strconv.Itoa(e.ActionIndex + 1))
+	builder.WritePrimary("extract-package")
 	if e.Err != nil {
 		if e.DestinationStats.Files > 0 || e.DestinationStats.Directories > 0 {
-			return fmt.Sprintf("The extraction of %s from \"%s\" to \"%s\" failed after %s (%s mbps): %s.", e.SourceStats, e.SourcePath, e.DestinationPath, duration, e.BitrateInMbps(), e.Err)
+			builder.WriteStandard(fmt.Sprintf("The extraction of %s from \"%s\" to \"%s\" failed after %s (%s mbps): %s.", e.SourceStats, e.SourcePath, e.DestinationPath, duration, e.BitrateInMbps(), e.Err))
+		} else {
+			builder.WriteStandard(fmt.Sprintf("The extraction of %s from \"%s\" to \"%s\" failed due to an error: %s.", e.SourceStats, e.SourcePath, e.DestinationPath, e.Err))
 		}
-		return fmt.Sprintf("The extraction of %s from \"%s\" to \"%s\" failed due to an error: %s.", e.SourceStats, e.SourcePath, e.DestinationPath, e.Err)
+	} else {
+		builder.WriteStandard(fmt.Sprintf("The extraction of %s from \"%s\" to \"%s\" was completed in %s (%s mbps).", e.SourceStats, e.SourcePath, e.DestinationPath, duration, e.BitrateInMbps()))
 	}
-	return fmt.Sprintf("The extraction of %s from \"%s\" to \"%s\" was completed in %s (%s mbps).", e.SourceStats, e.SourcePath, e.DestinationPath, duration, e.BitrateInMbps())
+
+	return builder.String()
 }
 
 // Attrs returns a set of structured log attributes for the event.
@@ -123,7 +146,7 @@ func (e ExtractionStopped) Attrs() []slog.Attr {
 	attrs := []slog.Attr{
 		slog.String("deployment", string(e.Deployment)),
 		slog.String("flow", string(e.Flow)),
-		slog.String("action", string(e.Action)),
+		slog.Group("action", "index", e.ActionIndex, "type", e.ActionType),
 		slog.Group("source", "path", e.SourcePath, slog.Group("stats", "files", e.SourceStats.Files, "directories", e.SourceStats.Directories, "total-bytes", e.SourceStats.TotalBytes)),
 		slog.Group("destination", "path", e.DestinationPath, slog.Group("stats", "files", e.SourceStats.Files, "directories", e.SourceStats.Directories, "total-bytes", e.SourceStats.TotalBytes)),
 		slog.Time("started", e.Started),

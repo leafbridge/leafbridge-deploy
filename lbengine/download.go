@@ -55,12 +55,14 @@ func (engine *downloadEngine) DownloadAndVerifyPackage(ctx context.Context, pkg 
 	if existingFileAttributes := verifier.State(); existingFileAttributes.Size >= pkg.Definition.Attributes.Size {
 		// Record the file verification result.
 		engine.events.Record(lbdeployevent.FileVerification{
-			Deployment: engine.deployment.ID,
-			Flow:       engine.flow.ID,
-			FileName:   file.Name,
-			Path:       file.Path,
-			Expected:   pkg.Definition.Attributes,
-			Actual:     existingFileAttributes,
+			Deployment:  engine.deployment.ID,
+			Flow:        engine.flow.ID,
+			ActionIndex: engine.action.Index,
+			ActionType:  engine.action.Definition.Type,
+			FileName:    file.Name,
+			Path:        file.Path,
+			Expected:    pkg.Definition.Attributes,
+			Actual:      existingFileAttributes,
 		})
 
 		// Verify the existing file by testing whether its attributes match
@@ -116,13 +118,15 @@ func (engine *downloadEngine) DownloadAndVerifyPackage(ctx context.Context, pkg 
 
 		// Record the file verification result.
 		engine.events.Record(lbdeployevent.FileVerification{
-			Deployment: engine.deployment.ID,
-			Flow:       engine.flow.ID,
-			Source:     source,
-			FileName:   file.Name,
-			Path:       file.Path,
-			Expected:   pkg.Definition.Attributes,
-			Actual:     downloadedFileAttributes,
+			Deployment:  engine.deployment.ID,
+			Flow:        engine.flow.ID,
+			ActionIndex: engine.action.Index,
+			ActionType:  engine.action.Definition.Type,
+			Source:      source,
+			FileName:    file.Name,
+			Path:        file.Path,
+			Expected:    pkg.Definition.Attributes,
+			Actual:      downloadedFileAttributes,
 		})
 
 		// Verify the downloaded file by testing whether its attributes match

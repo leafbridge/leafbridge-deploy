@@ -39,7 +39,8 @@ func (e CommandSkipped) Message() string {
 	builder.WritePrimary(string(e.Deployment))
 	builder.WritePrimary(string(e.Flow))
 	builder.WritePrimary(strconv.Itoa(e.ActionIndex + 1))
-	builder.WritePrimary(fmt.Sprintf("Invoke %s.%s", e.Package, e.Command))
+	builder.WritePrimary(string(e.ActionType))
+	builder.WritePrimary(fmt.Sprintf("%s.%s", e.Package, e.Command))
 	builder.WriteStandard("Skipped command")
 	if len(e.Apps.AlreadyInstalled) > 0 {
 		builder.WriteNote(fmt.Sprintf("[%s]", e.Apps.AlreadyInstalled), fieldformat.Label("already installed"))
@@ -99,7 +100,8 @@ func (e CommandStarted) Message() string {
 	builder.WritePrimary(string(e.Deployment))
 	builder.WritePrimary(string(e.Flow))
 	builder.WritePrimary(strconv.Itoa(e.ActionIndex + 1))
-	builder.WritePrimary(fmt.Sprintf("Invoke %s.%s", e.Package, e.Command))
+	builder.WritePrimary(string(e.ActionType))
+	builder.WritePrimary(fmt.Sprintf("%s.%s", e.Package, e.Command))
 	switch installs, uninstalls := len(e.Apps.ToInstall), len(e.Apps.ToUninstall); {
 	case installs > 0 && uninstalls > 0:
 		builder.WritePrimary(fmt.Sprintf("Starting command to install %s and uninstall %s", e.Apps.ToInstall, e.Apps.ToUninstall))
@@ -170,7 +172,8 @@ func (e CommandStopped) Message() string {
 	builder.WritePrimary(string(e.Deployment))
 	builder.WritePrimary(string(e.Flow))
 	builder.WritePrimary(strconv.Itoa(e.ActionIndex + 1))
-	builder.WritePrimary(fmt.Sprintf("Invoke %s.%s", e.Package, e.Command))
+	builder.WritePrimary(string(e.ActionType))
+	builder.WritePrimary(fmt.Sprintf("%s.%s", e.Package, e.Command))
 	if e.Err != nil {
 		builder.WriteStandard(fmt.Sprintf("Stopped command due to an error: %s", e.Err))
 	} else if err := e.AppsAfter.Err(); err != nil {

@@ -59,7 +59,8 @@ func (engine *extractionEngine) ExtractPackage(ctx context.Context, source stagi
 	engine.events.Record(lbdeployevent.ExtractionStarted{
 		Deployment:      engine.deployment.ID,
 		Flow:            engine.flow.ID,
-		Action:          engine.action.Definition.Type,
+		ActionIndex:     engine.action.Index,
+		ActionType:      engine.action.Definition.Type,
 		SourcePath:      source.Path,
 		DestinationPath: destination.Path(),
 		SourceStats:     sourceStats,
@@ -154,7 +155,8 @@ func (engine *extractionEngine) ExtractPackage(ctx context.Context, source stagi
 	engine.events.Record(lbdeployevent.ExtractionStopped{
 		Deployment:       engine.deployment.ID,
 		Flow:             engine.flow.ID,
-		Action:           engine.action.Definition.Type,
+		ActionIndex:      engine.action.Index,
+		ActionType:       engine.action.Definition.Type,
 		SourcePath:       source.Path,
 		DestinationPath:  destination.Path(),
 		SourceStats:      sourceStats,
