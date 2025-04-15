@@ -24,6 +24,7 @@ type packageEngine struct {
 	action     actionData
 	pkg        packageData
 	events     lbevent.Recorder
+	force      bool
 	state      *engineState
 }
 
@@ -75,7 +76,7 @@ func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy
 		if !appEvaluation.ActionsNeeded() {
 			// If all app installs and uninstalls are already in effect,
 			// and command invocation isn't forced, skip this command.
-			if !engine.action.Definition.Force {
+			if !engine.force && !engine.action.Definition.Force {
 				// Record that this command is being skipped.
 				engine.events.Record(lbdeployevent.CommandSkipped{
 					Deployment:  engine.deployment.ID,
@@ -170,6 +171,7 @@ func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy
 		},
 		apps:   appEvaluation,
 		events: engine.events,
+		force:  engine.force,
 		state:  engine.state,
 	}
 

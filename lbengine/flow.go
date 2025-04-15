@@ -22,6 +22,7 @@ type flowEngine struct {
 	deployment lbdeploy.Deployment
 	flow       flowData
 	events     lbevent.Recorder
+	force      bool
 	state      *engineState
 }
 
@@ -102,6 +103,7 @@ func (engine flowEngine) Invoke(ctx context.Context) error {
 					Definition: action,
 				},
 				events: engine.events,
+				force:  engine.force,
 				state:  engine.state,
 			}
 			if err := ae.Invoke(ctx); err != nil {

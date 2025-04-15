@@ -13,6 +13,7 @@ import (
 type DeploymentEngine struct {
 	deployment lbdeploy.Deployment
 	events     lbevent.Recorder
+	force      bool
 	state      *engineState
 }
 
@@ -22,6 +23,7 @@ func NewDeploymentEngine(deployment lbdeploy.Deployment, opts Options) Deploymen
 	return DeploymentEngine{
 		deployment: deployment,
 		events:     opts.Events,
+		force:      opts.Force,
 		state:      newEngineState(),
 	}
 }
@@ -62,6 +64,7 @@ func (engine DeploymentEngine) Invoke(ctx context.Context, flow lbdeploy.FlowID)
 			Definition: definition,
 		},
 		events: engine.events,
+		force:  engine.force,
 		state:  engine.state,
 	}
 

@@ -18,6 +18,7 @@ type DeployCmd struct {
 	ConfigFile string          `kong:"required,name='config-file',help='Path to a deployment file describing the deployment.'"`
 	Flow       lbdeploy.FlowID `kong:"required,name='flow',help='The flow to invoke within the deployment.'"`
 	ShowConfig bool            `kong:"optional,name='show-config',help='Show the loaded configuration.'"`
+	Force      bool            `kong:"optional,name='force',help='Force processing of the commands that would normally be skipped.'"`
 	Verbose    bool            `kong:"optional,name='verbose',short='v',help='Show debug messages on the command line.'"`
 }
 
@@ -70,6 +71,7 @@ func (cmd DeployCmd) Run(ctx context.Context) error {
 	// Prepare a new deployment engine for the deployment.
 	engine := lbengine.NewDeploymentEngine(dep, lbengine.Options{
 		Events: recorder,
+		Force:  cmd.Force,
 	})
 
 	// Invoke the requested flow within the deployment.

@@ -22,6 +22,7 @@ type actionEngine struct {
 	flow       flowData
 	action     actionData
 	events     lbevent.Recorder
+	force      bool
 	state      *engineState
 }
 
@@ -97,6 +98,7 @@ func (engine *actionEngine) startFlow(ctx context.Context) error {
 			Definition: definition,
 		},
 		events: engine.events,
+		force:  engine.force,
 		state:  engine.state,
 	}
 
@@ -123,6 +125,7 @@ func (engine *actionEngine) preparePackage(ctx context.Context) error {
 			Definition: pkg,
 		},
 		events: engine.events,
+		force:  engine.force,
 		state:  engine.state,
 	}
 
@@ -148,6 +151,7 @@ func (engine *actionEngine) invokePackage(ctx context.Context) error {
 			Definition: pkg,
 		},
 		events: engine.events,
+		force:  engine.force,
 		state:  engine.state,
 	}
 

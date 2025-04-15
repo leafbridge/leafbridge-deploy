@@ -33,6 +33,7 @@ type commandEngine struct {
 	command    commandData
 	apps       lbdeploy.AppEvaluation
 	events     lbevent.Recorder
+	force      bool
 	state      *engineState
 }
 
