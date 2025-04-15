@@ -45,9 +45,10 @@ func (engine *fileEngine) CopyFile(ctx context.Context) error {
 	started := time.Now()
 
 	var (
-		sourceFilePath string
-		destFilePath   string
-		fileSize       int64
+		sourceFilePath  string
+		destFilePath    string
+		destFileExisted bool
+		fileSize        int64
 	)
 	err = func() error {
 		// Open the root above the destination file.
@@ -76,6 +77,7 @@ func (engine *fileEngine) CopyFile(ctx context.Context) error {
 			//
 			// TODO: Support replacing existing files, optionally via
 			// configuration.
+			destFileExisted = true
 			return nil
 		} else {
 			return errors.New("the destination file path already exists but is not a regular file")
@@ -127,18 +129,95 @@ func (engine *fileEngine) CopyFile(ctx context.Context) error {
 
 	// Record the file copy.
 	engine.events.Record(lbdeployevent.FileCopy{
-		Deployment:      engine.deployment.ID,
-		Flow:            engine.flow.ID,
-		ActionIndex:     engine.action.Index,
-		ActionType:      engine.action.Definition.Type,
-		SourceID:        sourceFileID,
-		SourcePath:      sourceFilePath,
-		DestinationID:   destFileID,
-		DestinationPath: destFilePath,
-		FileSize:        fileSize,
-		Started:         started,
-		Stopped:         stopped,
-		Err:             err,
+		Deployment:         engine.deployment.ID,
+		Flow:               engine.flow.ID,
+		ActionIndex:        engine.action.Index,
+		ActionType:         engine.action.Definition.Type,
+		SourceID:           sourceFileID,
+		SourcePath:         sourceFilePath,
+		DestinationID:      destFileID,
+		DestinationPath:    destFilePath,
+		DestinationExisted: destFileExisted,
+		FileSize:           fileSize,
+		Started:            started,
+		Stopped:            stopped,
+		Err:                err,
+	})
+
+	return nil
+}
+
+// DeleteFile performs a file delete operation.
+func (engine *fileEngine) DeleteFile(ctx context.Context) error {
+	// Find the relevant file within the deployment.
+	fileID := engine.action.Definition.DestinationFile
+	fileRef, err := engine.deployment.Resources.FileSystem.ResolveFile(fileID)
+	if err != nil {
+		return fmt.Errorf("file: %w", err)
+	}
+
+	// Record the time that the file deletion started.
+	started := time.Now()
+
+	var (
+		filePath    string
+		fileSize    int64
+		fileExisted bool
+	)
+	err = func() error {
+		// Open the root above the destination file.
+		fileDir, err := localfs.OpenDir(fileRef.Dir())
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil // The parent directory does not exist.
+			}
+			return fmt.Errorf("unable to open the file's directory: %w", err)
+		}
+		defer fileDir.Close()
+
+		// Record the file path for event logging.
+		{
+			localized, err := filepath.Localize(fileRef.FilePath)
+			if err == nil {
+				filePath = filepath.Join(fileDir.Path(), localized)
+			}
+		}
+
+		// If there is not an existing file, or if the path points to
+		// something other than a regular file, stop.
+		fi, err := fileDir.System().Stat(fileRef.FilePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil // The file does not exist.
+			}
+			return fmt.Errorf("unable to evaluate the file to be deleted: %w", err)
+		} else if !fi.Mode().IsRegular() {
+			return errors.New("the file path exists but is not a regular file")
+		}
+
+		// Record that the file exixted.
+		fileExisted = true
+
+		// Delete the file.
+		return fileDir.System().Remove(fileRef.FilePath)
+	}()
+
+	// Record the time that the file deletion stopped.
+	stopped := time.Now()
+
+	// Record the file deletion.
+	engine.events.Record(lbdeployevent.FileDelete{
+		Deployment:  engine.deployment.ID,
+		Flow:        engine.flow.ID,
+		ActionIndex: engine.action.Index,
+		ActionType:  engine.action.Definition.Type,
+		FileID:      fileID,
+		FilePath:    filePath,
+		FileSize:    fileSize,
+		FileExisted: fileExisted,
+		Started:     started,
+		Stopped:     stopped,
+		Err:         err,
 	})
 
 	return nil

@@ -57,6 +57,10 @@ func (engine *actionEngine) Invoke(ctx context.Context) error {
 			if err := engine.copyFile(ctx); err != nil {
 				return err
 			}
+		case "delete-file":
+			if err := engine.deleteFile(ctx); err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("unrecognized deployment action type \"%s\"", engine.action.Definition.Type)
 		}
@@ -172,4 +176,19 @@ func (engine *actionEngine) copyFile(ctx context.Context) error {
 
 	// Execute the copy-file action via the file engine.
 	return fe.CopyFile(ctx)
+}
+
+// deleteFile performs a file delete operation.
+func (engine *actionEngine) deleteFile(ctx context.Context) error {
+	// Prepare a file engine.
+	fe := fileEngine{
+		deployment: engine.deployment,
+		flow:       engine.flow,
+		action:     engine.action,
+		events:     engine.events,
+		state:      engine.state,
+	}
+
+	// Execute the delete-file action via the file engine.
+	return fe.DeleteFile(ctx)
 }
