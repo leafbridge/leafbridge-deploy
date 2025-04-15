@@ -2,6 +2,7 @@ package lbengine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -33,6 +34,48 @@ func (engine flowEngine) Invoke(ctx context.Context) error {
 			Flow:       engine.flow.ID,
 		})
 		return fmt.Errorf("the flow \"%s\" is already running", engine.flow.ID)
+	}
+
+	// Attempt to acquire all of the locks required for this flow.
+	if locks := engine.flow.Definition.Locks; len(locks) > 0 {
+		// The lock manager ensures that all locks are reentrant, which means
+		// they can be locked repeateadly within the program without causing
+		// a deadlock.
+		//
+		// Each call to Lock() must be paired with a call to Unlock() so that
+		// the reference counts can be maintained.
+
+		// Create a lock group.
+		group, err := engine.state.locks.Create(engine.deployment.Resources, locks...)
+		if err != nil {
+			return fmt.Errorf("the flow \"%s\" failed to prepare its lock group: %w", engine.flow.ID, err)
+		}
+
+		// Try to lock all members of the group.
+		if err := group.Lock(); err != nil {
+			// We failed to acquire one of the locks. Find out which one
+			// failed.
+			var lockID lbdeploy.LockID
+			{
+				var lockErr LockError
+				if errors.As(err, &lockErr) {
+					lockID = lockErr.LockID
+				}
+			}
+
+			// Record the lock acquisition failure.
+			engine.events.Record(lbdeployevent.FlowLockNotAcquired{
+				Deployment: engine.deployment.ID,
+				Flow:       engine.flow.ID,
+				Lock:       lockID,
+				Err:        err,
+			})
+
+			return fmt.Errorf("the flow \"%s\" failed to acquire locks for its entire lock group: %w", engine.flow.ID, err)
+		}
+
+		// Unlock all members when finished.
+		defer group.Unlock()
 	}
 
 	// Record this as a running flow as long as it is running.

@@ -88,6 +88,48 @@ func (e FlowStopped) Duration() time.Duration {
 	return e.Stopped.Sub(e.Started)
 }
 
+// FlowLockNotAcquired is an event that occurs when a deployment flow cannot
+// be started because one of its locks could not be acquired.
+type FlowLockNotAcquired struct {
+	Deployment lbdeploy.DeploymentID
+	Flow       lbdeploy.FlowID
+	Lock       lbdeploy.LockID
+	Err        error
+}
+
+// Component identifies the component that generated the event.
+func (e FlowLockNotAcquired) Component() string {
+	return "flow"
+}
+
+// Level returns the level of the event.
+func (e FlowLockNotAcquired) Level() slog.Level {
+	return slog.LevelError
+}
+
+// Message returns a description of the event.
+func (e FlowLockNotAcquired) Message() string {
+	if e.Err != nil {
+		return fmt.Sprintf("%s: %s: Unable to start the flow: %s.", e.Deployment, e.Flow, e.Err)
+	}
+	return fmt.Sprintf("%s: %s: Unable to start the flow. The %s lock could not be acquired.", e.Deployment, e.Flow, e.Lock)
+}
+
+// Attrs returns a set of structured log attributes for the event.
+func (e FlowLockNotAcquired) Attrs() []slog.Attr {
+	attrs := []slog.Attr{
+		slog.String("deployment", string(e.Deployment)),
+		slog.String("flow", string(e.Flow)),
+	}
+	if e.Lock != "" {
+		attrs = append(attrs, slog.String("lock", string(e.Lock)))
+	}
+	if e.Err != nil {
+		attrs = append(attrs, slog.String("error", e.Err.Error()))
+	}
+	return attrs
+}
+
 // FlowAlreadyRunning is an event that occurs when a deployment flow cannot
 // be started because the flow is already running. This might indicate a cycle
 // in the flow logic.

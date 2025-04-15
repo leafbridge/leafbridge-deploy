@@ -5,8 +5,10 @@ import "fmt"
 // Resources defines the set of resources used by a deployment, both local
 // and remote.
 type Resources struct {
-	Packages   PackageMap          `json:"packages,omitempty"`
-	FileSystem FileSystemResources `json:"file-system,omitempty"`
+	Mutexes    MutexMap            `json:"mutexes,omitzero"`
+	Locks      LockMap             `json:"locks,omitzero"`
+	Packages   PackageMap          `json:"packages,omitzero"`
+	FileSystem FileSystemResources `json:"file-system,omitzero"`
 }
 
 // Validate returns a non-nil error if the deployment ID is invalid.

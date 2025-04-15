@@ -9,12 +9,14 @@ import (
 type engineState struct {
 	activeFlows       flowSet
 	extractedPackages map[lbdeploy.PackageID]tempfs.ExtractionDir
+	locks             *lockManager
 }
 
 func newEngineState() *engineState {
 	return &engineState{
 		activeFlows:       make(flowSet),
 		extractedPackages: make(map[lbdeploy.PackageID]tempfs.ExtractionDir),
+		locks:             newLockManager(),
 	}
 }
 

@@ -27,7 +27,6 @@ type fileEngine struct {
 
 // CopyFile performs a file copy operation.
 func (engine *fileEngine) CopyFile(ctx context.Context) error {
-
 	// Find the relevant source file within the deployment.
 	sourceFileID := engine.action.Definition.SourceFile
 	sourceFileRef, err := engine.deployment.Resources.FileSystem.ResolveFile(sourceFileID)

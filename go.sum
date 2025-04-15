@@ -10,6 +10,8 @@ github.com/gentlemanautomaton/volmgmt v0.0.0-20250409182909-ce74450cc0fc h1:qkLt
 github.com/gentlemanautomaton/volmgmt v0.0.0-20250409182909-ce74450cc0fc/go.mod h1:BEm8Ghsv1Rbw1HKKx5CtPCHKNJ2Qh3GaoIY5KTMixm4=
 github.com/gentlemanautomaton/winapp v0.0.0-20250412002214-a4f7f0c4cb8d h1:i1LQB0KOAfNKVk+jQFT2KeU3a2hOQZLnX50H6Jc5X00=
 github.com/gentlemanautomaton/winapp v0.0.0-20250412002214-a4f7f0c4cb8d/go.mod h1:fvQf67v9ej7Gy5px94GXdeckl4RERcmPktD+6uDIP3k=
+github.com/gentlemanautomaton/winobj v0.0.0-20250415033905-21826c52876d h1:cW0sN8tWr/PUrJwa7f5cZ6Z3HcCAl7M3OgCDqANghuA=
+github.com/gentlemanautomaton/winobj v0.0.0-20250415033905-21826c52876d/go.mod h1:rG2udelg6fgSb0y9ez3aBypKQxFlkcyUW0ABIWxmBfA=
 github.com/hexops/gotextdiff v1.0.3 h1:gitA9+qJrrTCsiCl7+kh75nPqQt1cx4ZkudSTLoUqJM=
 github.com/hexops/gotextdiff v1.0.3/go.mod h1:pSWU5MAI3yDq+fZBTazCSJysOMbxWL1BSow5/V2vxeg=
 golang.org/x/sys v0.32.0 h1:s77OFDvIQeibCmezSnk/q6iAfkdiQaJi4VzroCFrN20=
