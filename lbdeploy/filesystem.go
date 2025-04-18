@@ -2,6 +2,7 @@ package lbdeploy
 
 import (
 	"fmt"
+	"path/filepath"
 	"slices"
 
 	"golang.org/x/sys/windows"
@@ -177,6 +178,21 @@ func (ref FileRef) Dir() DirRef {
 	}
 }
 
+// Path returns the path of the directory on the local file system.
+func (ref FileRef) Path() (string, error) {
+	path, err := ref.Dir().Path()
+	if err != nil {
+		return "", err
+	}
+
+	localized, err := filepath.Localize(ref.FilePath)
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(path, localized), nil
+}
+
 // DirectoryResourceMap holds a set of directory resources mapped by their
 // identifiers.
 type DirectoryResourceMap map[DirectoryResourceID]DirectoryResource
@@ -197,6 +213,25 @@ type DirectoryResource struct {
 type DirRef struct {
 	Root    KnownFolder
 	Lineage []DirectoryResource
+}
+
+// Path returns the path of the directory on the local file system.
+func (ref DirRef) Path() (string, error) {
+	root, err := ref.Root.Path()
+	if err != nil {
+		return "", err
+	}
+
+	path := root
+	for _, dir := range ref.Lineage {
+		localized, err := filepath.Localize(dir.Path)
+		if err != nil {
+			return "", err
+		}
+		path = filepath.Join(path, localized)
+	}
+
+	return path, nil
 }
 
 // DirectoryResourceSet holds a set of directory resource IDs.
@@ -226,17 +261,28 @@ type KnownFolderMap map[DirectoryResourceID]KnownFolder
 
 // KnownFolder is a folder with a known location.
 type KnownFolder struct {
-	id *windows.KNOWNFOLDERID
+	id   DirectoryResourceID
+	guid *windows.KNOWNFOLDERID
+}
+
+// ID returns the LeafBridge directory ID of the known folder.
+func (kf KnownFolder) ID() DirectoryResourceID {
+	return kf.id
+}
+
+// GUID returns the Known Folder ID in Windows.
+func (kf KnownFolder) GUID() *windows.KNOWNFOLDERID {
+	return kf.guid
 }
 
 // IsZero returns true if the known folder is undefined.
 func (kf KnownFolder) IsZero() bool {
-	return kf.id == nil
+	return kf.guid == nil
 }
 
 // Path retrieves the path to the known folder on the local system.
 func (kf KnownFolder) Path() (path string, err error) {
-	path, err = windows.KnownFolderPath(kf.id, 0)
+	path, err = windows.KnownFolderPath(kf.guid, 0)
 	return
 }
 
@@ -248,7 +294,7 @@ func GetKnownFolder(id DirectoryResourceID) (folder KnownFolder, ok bool) {
 }
 
 var knownFolders = KnownFolderMap{
-	"program-data":   KnownFolder{id: windows.FOLDERID_ProgramData},
-	"start-menu":     KnownFolder{id: windows.FOLDERID_CommonStartMenu},
-	"public-desktop": KnownFolder{id: windows.FOLDERID_PublicDesktop},
+	"program-data":   KnownFolder{guid: windows.FOLDERID_ProgramData, id: "program-data"},
+	"start-menu":     KnownFolder{guid: windows.FOLDERID_CommonStartMenu, id: "start-menu"},
+	"public-desktop": KnownFolder{guid: windows.FOLDERID_PublicDesktop, id: "public-desktop"},
 }
