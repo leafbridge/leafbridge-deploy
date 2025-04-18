@@ -5,6 +5,7 @@ import "fmt"
 // Resources defines the set of resources used by a deployment, both local
 // and remote.
 type Resources struct {
+	Processes  ProcessResourceMap  `json:"processes,omitzero"`
 	Mutexes    MutexMap            `json:"mutexes,omitzero"`
 	Locks      LockMap             `json:"locks,omitzero"`
 	Packages   PackageMap          `json:"packages,omitzero"`

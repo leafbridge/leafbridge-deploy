@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/gentlemanautomaton/winobj/winmutex"
+	"github.com/leafbridge/leafbridge-deploy/lbengine"
 	"github.com/leafbridge/leafbridge-deploy/localfs"
 )
 
@@ -57,6 +58,41 @@ func (cmd ShowResourcesCmd) Run(ctx context.Context) error {
 	}
 
 	fmt.Printf("---- %s (%s) Resources ----\n", dep.Name, cmd.ConfigFile)
+
+	// Process Resources.
+	if processes := dep.Resources.Processes; len(processes) > 0 {
+		// Sort the process resource IDs for a deterministic order.
+		ids := slices.Collect(maps.Keys(processes))
+		slices.Sort(ids)
+
+		// Print information about each process.
+		fmt.Printf("  Processes:\n")
+		for _, id := range ids {
+			process := processes[id]
+			func() {
+				// Print the resource ID and description.
+				fmt.Printf("    %s\n", id)
+				fmt.Printf("      Desc:     %s\n", process.Description)
+
+				// Look for running processes that match the criteria.
+				total, err := lbengine.NumberOfRunningProcesses(process.Match)
+				if err != nil {
+					fmt.Printf("      Running:  %v\n", process.Description)
+					return
+				}
+
+				// Print the number of running processes.
+				switch total {
+				case 0:
+					fmt.Printf("      Running:  No\n")
+				case 1:
+					fmt.Printf("      Running:  Yes (%d process)\n", total)
+				default:
+					fmt.Printf("      Running:  Yes (%d processes)\n", total)
+				}
+			}()
+		}
+	}
 
 	// Mutex Resources.
 	if mutexes := dep.Resources.Mutexes; len(mutexes) > 0 {
