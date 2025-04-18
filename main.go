@@ -15,6 +15,7 @@ func main() {
 
 	var cli struct {
 		Deploy  DeployCmd  `kong:"cmd,help='Deploys a particular software package.'"`
+		Show    ShowCmd    `kong:"cmd,help='Shows information about a deployment.'"`
 		Version VersionCmd `kong:"cmd,help='Display leafbridge-deploy version information.'"`
 	}
 

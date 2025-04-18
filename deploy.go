@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log/slog"
 	"os"
 
@@ -17,7 +15,6 @@ import (
 type DeployCmd struct {
 	ConfigFile string          `kong:"required,name='config-file',help='Path to a deployment file describing the deployment.'"`
 	Flow       lbdeploy.FlowID `kong:"required,name='flow',help='The flow to invoke within the deployment.'"`
-	ShowConfig bool            `kong:"optional,name='show-config',help='Show the loaded configuration.'"`
 	Force      bool            `kong:"optional,name='force',help='Force processing of the commands that would normally be skipped.'"`
 	Verbose    bool            `kong:"optional,name='verbose',short='v',help='Show debug messages on the command line.'"`
 }
@@ -28,17 +25,6 @@ func (cmd DeployCmd) Run(ctx context.Context) error {
 	dep, err := loadDeployment(cmd.ConfigFile)
 	if err != nil {
 		return err
-	}
-
-	// Print the loaded configuration if requested.
-	if cmd.ShowConfig {
-		out, err := json.MarshalIndent(dep, "", "  ")
-		if err != nil {
-			return err
-		}
-
-		fmt.Println(string(out))
-		return nil
 	}
 
 	// Select an event recorder.
