@@ -28,7 +28,7 @@ func (fs FileSystemResources) ResolveFile(file FileResourceID) (ref FileRef, err
 	// Look up the file by its ID.
 	data, exists := fs.Files[file]
 	if !exists {
-		return FileRef{}, fmt.Errorf("the file id \"%s\" is not a declared resource in the deployment's file system resources", file)
+		return FileRef{}, fmt.Errorf("the \"%s\" file ID is not defined in the deployment's file system resources", file)
 	}
 
 	// Successful resolution must end in a known folder.
@@ -48,7 +48,7 @@ func (fs FileSystemResources) ResolveFile(file FileResourceID) (ref FileRef, err
 	for {
 		// Check for cycles.
 		if seen.Contains(next) {
-			return FileRef{}, fmt.Errorf("failed to resolve file \"%s\": the directory id \"%s\" has a cyclic reference to itself in the deployment's file system resources", file, next)
+			return FileRef{}, fmt.Errorf("failed to resolve file \"%s\": the \"%s\" directory ID has a cyclic reference to itself in the deployment's file system resources", file, next)
 		}
 		seen.Add(next)
 
@@ -56,7 +56,7 @@ func (fs FileSystemResources) ResolveFile(file FileResourceID) (ref FileRef, err
 		if dir, found := fs.Directories[next]; found {
 			lineage = append(lineage, dir)
 			if dir.Location == "" {
-				return FileRef{}, fmt.Errorf("failed to resolve file \"%s\": the directory id \"%s\" does not have a location", file, next)
+				return FileRef{}, fmt.Errorf("failed to resolve file \"%s\": the \"%s\" directory ID does not have a location", file, next)
 			}
 			next = dir.Location
 		}
@@ -68,7 +68,7 @@ func (fs FileSystemResources) ResolveFile(file FileResourceID) (ref FileRef, err
 		}
 
 		// The location is not defined.
-		return FileRef{}, fmt.Errorf("failed to resolve file \"%s\": the directory id \"%s\" is not a declared resource in the deployment's file system resources", file, next)
+		return FileRef{}, fmt.Errorf("failed to resolve file \"%s\": the \"%s\" directory ID is not defined in the deployment's file system resources", file, next)
 	}
 
 	// Reverse the order of the directories that were recorded, so that it
@@ -96,7 +96,7 @@ func (fs FileSystemResources) ResolveDirectory(dir DirectoryResourceID) (ref Dir
 	// Look up the directory by its ID.
 	data, exists := fs.Directories[dir]
 	if !exists {
-		return DirRef{}, fmt.Errorf("the directory id \"%s\" is not a declared resource in the deployment's file system resources", dir)
+		return DirRef{}, fmt.Errorf("the \"%s\" directory ID is not defined in the deployment's file system resources", dir)
 	}
 
 	// Successful resolution must end in a known folder.
@@ -117,7 +117,7 @@ func (fs FileSystemResources) ResolveDirectory(dir DirectoryResourceID) (ref Dir
 	for {
 		// Check for cycles.
 		if seen.Contains(next) {
-			return DirRef{}, fmt.Errorf("failed to resolve directory \"%s\": the directory id \"%s\" has a cyclic reference to itself in the deployment's file system resources", dir, next)
+			return DirRef{}, fmt.Errorf("failed to resolve directory \"%s\": the \"%s\" directory ID has a cyclic reference to itself in the deployment's file system resources", dir, next)
 		}
 		seen.Add(next)
 
@@ -125,7 +125,7 @@ func (fs FileSystemResources) ResolveDirectory(dir DirectoryResourceID) (ref Dir
 		if dir, found := fs.Directories[next]; found {
 			lineage = append(lineage, dir)
 			if dir.Location == "" {
-				return DirRef{}, fmt.Errorf("failed to resolve directory \"%s\": the directory id \"%s\" does not have a location", dir, next)
+				return DirRef{}, fmt.Errorf("failed to resolve directory \"%s\": the \"%s\" directory ID does not have a location", dir, next)
 			}
 			next = dir.Location
 		}
@@ -137,7 +137,7 @@ func (fs FileSystemResources) ResolveDirectory(dir DirectoryResourceID) (ref Dir
 		}
 
 		// The location is not defined.
-		return DirRef{}, fmt.Errorf("failed to resolve directory \"%s\": the directory id \"%s\" is not a declared resource in the deployment's file system resources", dir, next)
+		return DirRef{}, fmt.Errorf("failed to resolve directory \"%s\": the \"%s\" directory ID is not defined in the deployment's file system resources", dir, next)
 	}
 
 	// Reverse the order of the directories that were recorded, so that it
