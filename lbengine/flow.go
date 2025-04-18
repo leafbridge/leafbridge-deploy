@@ -29,12 +29,52 @@ type flowEngine struct {
 func (engine flowEngine) Invoke(ctx context.Context) error {
 	// Check for a flow cycle and stop if one is detected.
 	if engine.state.activeFlows.Contains(engine.flow.ID) {
-		// Record the start of the flow.
+		// Record the failure to start the flow.
 		engine.events.Record(lbdeployevent.FlowAlreadyRunning{
 			Deployment: engine.deployment.ID,
 			Flow:       engine.flow.ID,
 		})
-		return fmt.Errorf("the flow \"%s\" is already running", engine.flow.ID)
+		return fmt.Errorf("the \"%s\" flow is already running", engine.flow.ID)
+	}
+
+	// Evaluate all preconditions for the flow.
+	if conditions := engine.flow.Definition.Preconditions; len(conditions) > 0 {
+		// Prepare a condition engine.
+		ce := NewConditionEngine(engine.deployment)
+
+		// Evaluate each condition.
+		var passed, failed lbdeploy.ConditionList
+		for i, condition := range conditions {
+			result, err := ce.Evaluate(condition)
+			if err != nil {
+				// Record the evaluation failure.
+				engine.events.Record(lbdeployevent.FlowCondition{
+					Deployment: engine.deployment.ID,
+					Flow:       engine.flow.ID,
+					Err:        err,
+				})
+
+				return fmt.Errorf("the \"%s\" flow failed to evaluate precondition %d: %w", engine.flow.ID, i+1, err)
+			}
+			if !result {
+				failed = append(failed, condition)
+			} else {
+				passed = append(passed, condition)
+			}
+		}
+
+		// Record the results of the evaluation.
+		engine.events.Record(lbdeployevent.FlowCondition{
+			Deployment: engine.deployment.ID,
+			Flow:       engine.flow.ID,
+			Passed:     passed,
+			Failed:     failed,
+		})
+
+		// If any of the preconditions failed, stop execution.
+		if len(failed) > 0 {
+			return fmt.Errorf("the \"%s\" flow is unable to run because one or more preconditions failed: %s", engine.flow.ID, failed)
+		}
 	}
 
 	// Attempt to acquire all of the locks required for this flow.
@@ -49,7 +89,7 @@ func (engine flowEngine) Invoke(ctx context.Context) error {
 		// Create a lock group.
 		group, err := engine.state.locks.Create(engine.deployment.Resources, locks...)
 		if err != nil {
-			return fmt.Errorf("the flow \"%s\" failed to prepare its lock group: %w", engine.flow.ID, err)
+			return fmt.Errorf("the \"%s\" flow failed to prepare its lock group: %w", engine.flow.ID, err)
 		}
 
 		// Try to lock all members of the group.
@@ -72,7 +112,7 @@ func (engine flowEngine) Invoke(ctx context.Context) error {
 				Err:        err,
 			})
 
-			return fmt.Errorf("the flow \"%s\" failed to acquire locks for its entire lock group: %w", engine.flow.ID, err)
+			return fmt.Errorf("the \"%s\" flow failed to acquire locks for its entire lock group: %w", engine.flow.ID, err)
 		}
 
 		// Unlock all members when finished.

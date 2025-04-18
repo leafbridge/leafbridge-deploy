@@ -8,6 +8,7 @@ type FlowID string
 
 // Flow is a flow of actions within a deployment.
 type Flow struct {
-	Locks   []LockID `json:"locks,omitzero"`
-	Actions []Action `json:"actions,omitzero"`
+	Preconditions ConditionList `json:"preconditions,omitzero"`
+	Locks         []LockID      `json:"locks,omitzero"`
+	Actions       []Action      `json:"actions,omitzero"`
 }
