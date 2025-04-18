@@ -111,6 +111,7 @@ func (fs FileSystemResources) ResolveDirectory(dir DirectoryResourceID) (ref Dir
 
 	// Start with the directory's location and traverse its ancestry, recording
 	// each parent along the way. Stop when we encounter a known folder.
+	lineage = append(lineage, data)
 	next := data.Location
 	for {
 		// Check for cycles.
