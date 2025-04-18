@@ -76,19 +76,9 @@ func createLock(resources lbdeploy.Resources, lock lbdeploy.LockID) (Lock, error
 	}
 
 	// Determine the name of the mutex.
-	var mutexName string
-	switch mutexDefinition.Namespace {
-	case "leafbridge":
-		// TODO: Consider using a private namespace.
-		mutexName = fmt.Sprintf("LeafBridge-Deployment-%s", mutexDefinition.Name)
-	case "global":
-		mutexName = fmt.Sprintf("Global\\%s", mutexDefinition.Name)
-	case "session":
-		mutexName = fmt.Sprintf("Session\\%s", mutexDefinition.Name)
-	case "":
-		return Lock{}, fmt.Errorf("the \"%s\" mutex is missing a mutex namespace", mutex)
-	default:
-		return Lock{}, fmt.Errorf("the \"%s\" mutex has an unrcognized namespace: %s", mutex, mutexDefinition.Namespace)
+	mutexName, err := mutexDefinition.ObjectName()
+	if err != nil {
+		return Lock{}, err
 	}
 
 	// Create or open the mutex.
