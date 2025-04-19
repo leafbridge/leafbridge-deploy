@@ -8,8 +8,8 @@ type Resources struct {
 	Processes  ProcessResourceMap  `json:"processes,omitzero"`
 	Mutexes    MutexMap            `json:"mutexes,omitzero"`
 	Locks      LockMap             `json:"locks,omitzero"`
-	Packages   PackageMap          `json:"packages,omitzero"`
 	FileSystem FileSystemResources `json:"file-system,omitzero"`
+	Packages   PackageMap          `json:"packages,omitzero"`
 }
 
 // Validate returns a non-nil error if the deployment ID is invalid.
