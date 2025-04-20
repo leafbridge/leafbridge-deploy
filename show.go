@@ -120,24 +120,24 @@ func (cmd ShowResourcesCmd) Run(ctx context.Context) error {
 			process := processes[id]
 			func() {
 				// Print the resource ID and description.
-				fmt.Printf("    %s\n", id)
-				fmt.Printf("      Desc:     %s\n", process.Description)
+				fmt.Printf("    %s:\n", id)
+				fmt.Printf("      Description: %s\n", process.Description)
 
 				// Look for running processes that match the criteria.
 				total, err := lbengine.NumberOfRunningProcesses(process.Match)
 				if err != nil {
-					fmt.Printf("      Running:  %v\n", process.Description)
+					fmt.Printf("      Running:     (%v)\n", process.Description)
 					return
 				}
 
 				// Print the number of running processes.
 				switch total {
 				case 0:
-					fmt.Printf("      Running:  No\n")
+					fmt.Printf("      Running:     No\n")
 				case 1:
-					fmt.Printf("      Running:  Yes (%d process)\n", total)
+					fmt.Printf("      Running:     Yes (%d process)\n", total)
 				default:
-					fmt.Printf("      Running:  Yes (%d processes)\n", total)
+					fmt.Printf("      Running:     Yes (%d processes)\n", total)
 				}
 			}()
 		}
@@ -154,27 +154,27 @@ func (cmd ShowResourcesCmd) Run(ctx context.Context) error {
 		for _, id := range ids {
 			mutex := mutexes[id]
 			func() {
-				fmt.Printf("    %s\n", id)
+				fmt.Printf("    %s:\n", id)
 
 				// Print the object name of the mutex.
 				name, err := mutex.ObjectName()
 				if err != nil {
-					fmt.Printf("      Name:     (%v)\n", err)
+					fmt.Printf("      Name:        (%v)\n", err)
 					return
 				}
-				fmt.Printf("      Name:     %s\n", name)
+				fmt.Printf("      Name:        %s\n", name)
 
 				// Print the status of the mutex.
 				exists, err := winmutex.Exists(name)
 				if err != nil {
-					fmt.Printf("      Status:   (%v)\n", err)
+					fmt.Printf("      Status:      (%v)\n", err)
 					return
 				}
 
 				if exists {
-					fmt.Printf("      Status:   Present\n")
+					fmt.Printf("      Status:      Present\n")
 				} else {
-					fmt.Printf("      Status:   Missing\n")
+					fmt.Printf("      Status:      Missing\n")
 				}
 			}()
 		}
@@ -195,33 +195,33 @@ func (cmd ShowResourcesCmd) Run(ctx context.Context) error {
 				// Resolve the directory reference.
 				ref, err := dep.Resources.FileSystem.ResolveDirectory(id)
 				if err != nil {
-					fmt.Printf("      Path:     %v\n", err)
+					fmt.Printf("      Path:        (%v)\n", err)
 					return
 				}
 
 				// Generate a file path.
 				path, err := ref.Path()
 				if err != nil {
-					fmt.Printf("      Path:     %v\n", err)
+					fmt.Printf("      Path:        (%v)\n", err)
 					return
 				}
 
 				// Open the parent directory.
 				dir, err := localfs.OpenDir(ref)
 				if err != nil {
-					fmt.Printf("      Path:     %s\n", path)
+					fmt.Printf("      Path:        %s\n", path)
 					if os.IsNotExist(err) {
-						fmt.Printf("      Status:   Missing\n")
+						fmt.Printf("      Status:      Missing\n")
 					} else {
-						fmt.Printf("      Status:   %v\n", err)
+						fmt.Printf("      Status:      (%v)\n", err)
 					}
 					return
 				}
 				defer dir.Close()
 
 				// Print the path and status.
-				fmt.Printf("      Path:     %s\n", dir.Path())
-				fmt.Printf("      Status:   Present\n")
+				fmt.Printf("      Path:        %s\n", dir.Path())
+				fmt.Printf("      Status:      Present\n")
 			}()
 		}
 	}
@@ -241,25 +241,25 @@ func (cmd ShowResourcesCmd) Run(ctx context.Context) error {
 				// Resolve the file reference.
 				ref, err := dep.Resources.FileSystem.ResolveFile(id)
 				if err != nil {
-					fmt.Printf("      Path:     %v\n", err)
+					fmt.Printf("      Path:        (%v)\n", err)
 					return
 				}
 
 				// Generate a file path.
 				path, err := ref.Path()
 				if err != nil {
-					fmt.Printf("      Path:     %v\n", err)
+					fmt.Printf("      Path:        (%v)\n", err)
 					return
 				}
-				fmt.Printf("      Path:     %s\n", path)
+				fmt.Printf("      Path:        %s\n", path)
 
 				// Attempt to open the parent directory.
 				dir, err := localfs.OpenDir(ref.Dir())
 				if err != nil {
 					if os.IsNotExist(err) {
-						fmt.Printf("      Status:   Missing\n")
+						fmt.Printf("      Status:      Missing\n")
 					} else {
-						fmt.Printf("      Status:   %v\n", err)
+						fmt.Printf("      Status:      (%v)\n", err)
 					}
 					return
 				}
@@ -269,23 +269,23 @@ func (cmd ShowResourcesCmd) Run(ctx context.Context) error {
 				fi, err := dir.System().Stat(ref.FilePath)
 				if err != nil {
 					if os.IsNotExist(err) {
-						fmt.Printf("      Status:   Missing\n")
+						fmt.Printf("      Status:      Missing\n")
 					} else {
-						fmt.Printf("      Status:   %v\n", err)
+						fmt.Printf("      Status:      (%v)\n", err)
 					}
 					return
 				}
 
 				// Make sure it's a regular file.
 				if !fi.Mode().IsRegular() {
-					fmt.Printf("      Status:   Not A File\n")
+					fmt.Printf("      Status:      Not A File\n")
 					return
 				}
 
 				// Report statistics.
-				fmt.Printf("      Status:   Present\n")
-				fmt.Printf("      Modified: %s\n", fi.ModTime())
-				fmt.Printf("      Size:     %d bytes(s)\n", fi.Size())
+				fmt.Printf("      Status:      Present\n")
+				fmt.Printf("      Modified:    %s\n", fi.ModTime())
+				fmt.Printf("      Size:        %d bytes(s)\n", fi.Size())
 			}()
 		}
 	}
