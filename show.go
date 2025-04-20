@@ -16,8 +16,8 @@ import (
 // ShowCmd shows information that is relevant to a LeafBridge deployment.
 type ShowCmd struct {
 	Config     ShowConfigCmd     `kong:"cmd,help='Shows configuration loaded from a deployment configuration file.'"`
-	Resources  ShowResourcesCmd  `kong:"cmd,help='Shows the relevant resources for a deployment.'"`
 	Conditions ShowConditionsCmd `kong:"cmd,help='Shews the current conditions for a deployment.'"`
+	Resources  ShowResourcesCmd  `kong:"cmd,help='Shows the relevant resources for a deployment.'"`
 }
 
 // ShowConfigCmd shows the configuration of a LeafBridge deployment.
@@ -44,6 +44,48 @@ func (cmd ShowConfigCmd) Run(ctx context.Context) error {
 	return nil
 }
 
+// ShowConditionsCmd shows the current status of conditions for a
+// LeafBridge deployment.
+type ShowConditionsCmd struct {
+	ConfigFile string `kong:"required,name='config-file',help='Path to a deployment file describing the deployment.'"`
+}
+
+// Run executes the LeafBridge show conditions command.
+func (cmd ShowConditionsCmd) Run(ctx context.Context) error {
+	// Read the deployment file.
+	dep, err := loadDeployment(cmd.ConfigFile)
+	if err != nil {
+		return err
+	}
+
+	// Validate the dpeloyment.
+	if err := dep.Validate(); err != nil {
+		fmt.Printf("The deployment contains invalid configuration: %s\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("---- %s (%s): Conditions ----\n", dep.Name, cmd.ConfigFile)
+
+	// Prepare a condition engine.
+	ce := lbengine.NewConditionEngine(dep)
+
+	// Sort the condition IDs for a deterministic order.
+	ids := slices.Collect(maps.Keys(dep.Conditions))
+	slices.Sort(ids)
+
+	// Print the status of each condition.
+	for _, id := range ids {
+		result, err := ce.Evaluate(id)
+		if err != nil {
+			fmt.Printf("    %s: %s\n", id, err)
+		} else {
+			fmt.Printf("    %s: %t\n", id, result)
+		}
+	}
+
+	return nil
+}
+
 // ShowResourcesCmd shows the current condition of relevant resources for
 // a LeafBridge deployment.
 type ShowResourcesCmd struct {
@@ -64,9 +106,9 @@ func (cmd ShowResourcesCmd) Run(ctx context.Context) error {
 		os.Exit(1)
 	}
 
-	fmt.Printf("---- %s (%s) Resources ----\n", dep.Name, cmd.ConfigFile)
+	fmt.Printf("---- %s (%s): Resources ----\n", dep.Name, cmd.ConfigFile)
 
-	// Process Resources.
+	// Print process resources.
 	if processes := dep.Resources.Processes; len(processes) > 0 {
 		// Sort the process resource IDs for a deterministic order.
 		ids := slices.Collect(maps.Keys(processes))
@@ -101,7 +143,7 @@ func (cmd ShowResourcesCmd) Run(ctx context.Context) error {
 		}
 	}
 
-	// Mutex Resources.
+	// Print mutex resources.
 	if mutexes := dep.Resources.Mutexes; len(mutexes) > 0 {
 		// Sort the mutex IDs for a deterministic order.
 		ids := slices.Collect(maps.Keys(mutexes))
@@ -138,7 +180,7 @@ func (cmd ShowResourcesCmd) Run(ctx context.Context) error {
 		}
 	}
 
-	// Directory Resources.
+	// Print directory resources.
 	if dirs := dep.Resources.FileSystem.Directories; len(dirs) > 0 {
 		// Sort the directory IDs for a deterministic order.
 		ids := slices.Collect(maps.Keys(dirs))
@@ -184,7 +226,7 @@ func (cmd ShowResourcesCmd) Run(ctx context.Context) error {
 		}
 	}
 
-	// File Resources.
+	// Print file resources.
 	if files := dep.Resources.FileSystem.Files; len(files) > 0 {
 		// Sort the file IDs for a deterministic order.
 		ids := slices.Collect(maps.Keys(files))
@@ -245,48 +287,6 @@ func (cmd ShowResourcesCmd) Run(ctx context.Context) error {
 				fmt.Printf("      Modified: %s\n", fi.ModTime())
 				fmt.Printf("      Size:     %d bytes(s)\n", fi.Size())
 			}()
-		}
-	}
-
-	return nil
-}
-
-// ShowConditionsCmd shows the current status of conditions for a
-// LeafBridge deployment.
-type ShowConditionsCmd struct {
-	ConfigFile string `kong:"required,name='config-file',help='Path to a deployment file describing the deployment.'"`
-}
-
-// Run executes the LeafBridge show conditions command.
-func (cmd ShowConditionsCmd) Run(ctx context.Context) error {
-	// Read the deployment file.
-	dep, err := loadDeployment(cmd.ConfigFile)
-	if err != nil {
-		return err
-	}
-
-	// Validate the dpeloyment.
-	if err := dep.Validate(); err != nil {
-		fmt.Printf("The deployment contains invalid configuration: %s\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Printf("---- %s (%s) Conditions ----\n", dep.Name, cmd.ConfigFile)
-
-	// Prepare a condition engine.
-	ce := lbengine.NewConditionEngine(dep)
-
-	// Sort the condition IDs for a deterministic order.
-	ids := slices.Collect(maps.Keys(dep.Conditions))
-	slices.Sort(ids)
-
-	// Print the status of each condition.
-	for _, id := range ids {
-		result, err := ce.Evaluate(id)
-		if err != nil {
-			fmt.Printf("    %s: %s\n", id, err)
-		} else {
-			fmt.Printf("    %s: %t\n", id, result)
 		}
 	}
 
