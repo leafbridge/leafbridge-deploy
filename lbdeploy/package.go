@@ -183,6 +183,7 @@ type PackageCommandID string
 type PackageCommand struct {
 	Installs   AppList       `json:"installs,omitzero"`
 	Uninstalls AppList       `json:"uninstalls,omitzero"`
+	Type       CommandType   `json:"type,omitempty"`
 	Executable PackageFileID `json:"executable,omitempty"`
 	Args       []string      `json:"args,omitzero"`
 }

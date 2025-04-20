@@ -66,13 +66,35 @@ func (engine *commandEngine) Invoke(ctx context.Context, files tempfs.Extraction
 		return fmt.Errorf("a working directory could not be determined for the \"%s\" command in the \"%s\" package", engine.command.ID, engine.pkg.ID)
 	}
 
+	// Prepare the command arguments.
+	args := engine.command.Definition.Args
+
+	// Special handling for use of msiexec.
+	switch engine.command.Definition.Type {
+	case lbdeploy.CommandTypeExe, "":
+	case lbdeploy.CommandTypeMSIInstall:
+		args = append([]string{"/i", execPath, "/quiet"}, args...)
+		execPath, err = exec.LookPath("msiexec.exe")
+		if err != nil {
+			return fmt.Errorf("failed to locate the Windows Installer executable: %w", err)
+		}
+	case lbdeploy.CommandTypeMSIUninstall:
+		args = append([]string{"/x", execPath, "/quiet"}, args...)
+		execPath, err = exec.LookPath("msiexec.exe")
+		if err != nil {
+			return fmt.Errorf("failed to locate the Windows Installer executable: %w", err)
+		}
+	default:
+		return fmt.Errorf("an unknown command type was specified: %s", engine.command.Definition.Type)
+	}
+
 	// Check for cancellation before starting the command.
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 
 	// Prepare a command that will be terminated when ctx is cancelled.
-	cmd := exec.CommandContext(ctx, execPath, engine.command.Definition.Args...)
+	cmd := exec.CommandContext(ctx, execPath, args...)
 
 	// Set the command's working directory.
 	cmd.Dir = execDir
