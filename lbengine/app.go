@@ -31,6 +31,13 @@ func (engine AppEngine) IsInstalled(app lbdeploy.AppID) (bool, error) {
 		return false, fmt.Errorf("the \"%s\" app does not exist within the \"%s\" deployment", app, engine.deployment.ID)
 	}
 
+	// If a condition has been supplied, use that to determine the
+	// application's status.
+	if definition.Condition != "" {
+		ce := NewConditionEngine(engine.deployment)
+		return ce.Evaluate(definition.Condition)
+	}
+
 	// Use the application registry that matches the application's
 	// architecture (x64 or x86) and scope (machine or user).
 	view, err := appregistry.ViewFor(definition.Architecture, definition.Scope)

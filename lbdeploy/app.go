@@ -48,11 +48,19 @@ func (list AppList) String() string {
 type AppID string
 
 // Application hold identifying information for an application.
+//
+// If it defines an architecture, scope and unpackaged app ID, these will be
+// used to determine if the application is installed in the Windows app
+// registry.
+//
+// Alternatively, a condition may be specified that determines whether the
+// application is installed.
 type Application struct {
 	Name         string               `json:"name"`
-	Architecture appcode.Architecture `json:"architecture"`
-	Scope        appscope.Scope       `json:"scope"`
-	ID           unpackaged.AppID     `json:"id"`
+	Architecture appcode.Architecture `json:"architecture,omitempty"`
+	Scope        appscope.Scope       `json:"scope,omitempty"`
+	ID           unpackaged.AppID     `json:"id,omitempty"`
+	Condition    ConditionID          `json:"condition,omitempty"`
 }
 
 // AppEvaluation is an evaluation of potential changes to the set of installed
