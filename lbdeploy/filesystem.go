@@ -15,20 +15,29 @@ type FileSystemResources struct {
 	Files       FileResourceMap      `json:"files,omitempty"`
 }
 
-// ResolveFile resolves the requested file resource, returning a file
-// reference that can be mapped to a path on the local system.
+// ResolveDirectory resolves the requested directory resource, returning a
+// directory reference that can be mapped to a path on the local system.
 //
-// Successfully resolving a path means that its path on the local system
-// can be determined, but it does not imply that the file exists.
+// Successfully resolving a directory resource means that its path on the
+// local system can be determined, but it does not imply that the directory
+// exists.
 //
-// If the file cannot be resolved, an error is returned.
+// If the directory cannot be resolved, an error is returned.
 func (fs FileSystemResources) ResolveDirectory(dir DirectoryResourceID) (ref DirRef, err error) {
 	// TODO: Consider making custom error types for resolution.
 
 	// Look up the directory by its ID.
 	data, exists := fs.Directories[dir]
 	if !exists {
-		return DirRef{}, fmt.Errorf("the \"%s\" directory ID is not defined in the deployment's file system resources", dir)
+		if candidate, found := GetKnownFolder(dir); found {
+			return DirRef{Root: candidate}, nil
+		}
+		return DirRef{}, fmt.Errorf("the \"%s\" directory is not defined in the deployment's resources", dir)
+	}
+
+	// Make sure the directory has a location.
+	if data.Location == "" {
+		return DirRef{}, fmt.Errorf("the \"%s\" directory does not have a location", dir)
 	}
 
 	// Successful resolution must end in a known folder.
@@ -38,42 +47,44 @@ func (fs FileSystemResources) ResolveDirectory(dir DirectoryResourceID) (ref Dir
 	// a lineage under the root.
 	var lineage []DirectoryResource
 
-	// Maintain a list of directory IDs that we've encountered, so that we
-	// can detect cycles.
+	// Maintain a map of directories we've encountered, so that we can detect
+	// cycles.
 	seen := make(DirectoryResourceSet)
 
-	// Start with the directory's location and traverse its ancestry, recording
-	// each parent along the way. Stop when we encounter a known folder.
+	// Start with the directory's location and traverse its ancestry,
+	// recording each parent along the way. Stop when we encounter a known
+	// folder.
 	lineage = append(lineage, data)
 	next := data.Location
 	for {
 		// Check for cycles.
 		if seen.Contains(next) {
-			return DirRef{}, fmt.Errorf("failed to resolve directory \"%s\": the \"%s\" directory ID has a cyclic reference to itself in the deployment's file system resources", dir, next)
+			return DirRef{}, fmt.Errorf("failed to resolve the \"%s\" directory: the \"%s\" parent directory has a cyclic reference to itself in the deployment's resources", dir, next)
 		}
 		seen.Add(next)
 
-		// Look for a directory with the ID.
-		if dir, found := fs.Directories[next]; found {
-			lineage = append(lineage, dir)
-			if dir.Location == "" {
-				return DirRef{}, fmt.Errorf("failed to resolve directory \"%s\": the \"%s\" directory ID does not have a location", dir, next)
+		// Look for a directory with the next directory ID.
+		if parent, found := fs.Directories[next]; found {
+			lineage = append(lineage, parent)
+			if parent.Location == "" {
+				return DirRef{}, fmt.Errorf("failed to resolve the \"%s\" directory: the \"%s\" parent directory does not have a location", dir, next)
 			}
-			next = dir.Location
+			next = parent.Location
+			continue
 		}
 
 		// Look for a known folder with the ID.
-		if kf, found := GetKnownFolder(next); found {
-			root = kf
+		if candidate, found := GetKnownFolder(next); found {
+			root = candidate
 			break
 		}
 
 		// The location is not defined.
-		return DirRef{}, fmt.Errorf("failed to resolve directory \"%s\": the \"%s\" directory ID is not defined in the deployment's file system resources", dir, next)
+		return DirRef{}, fmt.Errorf("failed to resolve the \"%s\" directory: the \"%s\" parent directory is not defined in the deployment's resources", dir, next)
 	}
 
-	// Reverse the order of the directories that were recorded, so that it
-	// can easily be followed from top to bottom.
+	// Reverse the order of the directories that were recorded, so they can
+	// easily be traversed from the root.
 	slices.Reverse(lineage)
 
 	return DirRef{
@@ -85,8 +96,8 @@ func (fs FileSystemResources) ResolveDirectory(dir DirectoryResourceID) (ref Dir
 // ResolveFile resolves the requested file resource, returning a file
 // reference that can be mapped to a path on the local system.
 //
-// Successfully resolving a path means that its path on the local system
-// can be determined, but it does not imply that the file exists.
+// Successfully resolving a file resource means that its path on the local
+// system can be determined, but it does not imply that the file exists.
 //
 // If the file cannot be resolved, an error is returned.
 func (fs FileSystemResources) ResolveFile(file FileResourceID) (ref FileRef, err error) {
@@ -95,56 +106,23 @@ func (fs FileSystemResources) ResolveFile(file FileResourceID) (ref FileRef, err
 	// Look up the file by its ID.
 	data, exists := fs.Files[file]
 	if !exists {
-		return FileRef{}, fmt.Errorf("the \"%s\" file ID is not defined in the deployment's file system resources", file)
+		return FileRef{}, fmt.Errorf("the \"%s\" file is not defined in the deployment's resources", file)
 	}
 
-	// Successful resolution must end in a known folder.
-	var root KnownFolder
-
-	// Keep track of the directories we traverse, which will ultimately form
-	// a lineage under the root.
-	var lineage []DirectoryResource
-
-	// Maintain a list of directory IDs that we've encountered, so that we
-	// can detect cycles.
-	seen := make(DirectoryResourceSet)
-
-	// Start with the file's location and traverse its ancestry, recording
-	// each parent along the way. Stop when we encounter a known folder.
-	next := data.Location
-	for {
-		// Check for cycles.
-		if seen.Contains(next) {
-			return FileRef{}, fmt.Errorf("failed to resolve file \"%s\": the \"%s\" directory ID has a cyclic reference to itself in the deployment's file system resources", file, next)
-		}
-		seen.Add(next)
-
-		// Look for a directory with the ID.
-		if dir, found := fs.Directories[next]; found {
-			lineage = append(lineage, dir)
-			if dir.Location == "" {
-				return FileRef{}, fmt.Errorf("failed to resolve file \"%s\": the \"%s\" directory ID does not have a location", file, next)
-			}
-			next = dir.Location
-		}
-
-		// Look for a known folder with the ID.
-		if kf, found := GetKnownFolder(next); found {
-			root = kf
-			break
-		}
-
-		// The location is not defined.
-		return FileRef{}, fmt.Errorf("failed to resolve file \"%s\": the \"%s\" directory ID is not defined in the deployment's file system resources", file, next)
+	// Make sure the file has a location.
+	if data.Location == "" {
+		return FileRef{}, fmt.Errorf("the \"%s\" file does not have a location", file)
 	}
 
-	// Reverse the order of the directories that were recorded, so that it
-	// can easily be followed from top to bottom.
-	slices.Reverse(lineage)
+	// Resolve the file's parent directory.
+	dir, err := fs.ResolveDirectory(data.Location)
+	if err != nil {
+		return FileRef{}, fmt.Errorf("failed to resolve the \"%s\" file: %w", file, err)
+	}
 
 	return FileRef{
-		Root:     root,
-		Lineage:  lineage,
+		Root:     dir.Root,
+		Lineage:  dir.Lineage,
 		FileID:   file,
 		FilePath: data.Path,
 	}, nil
@@ -240,7 +218,7 @@ func (ref FileRef) Dir() DirRef {
 	}
 }
 
-// Path returns the path of the directory on the local file system.
+// Path returns the path of the file on the local file system.
 func (ref FileRef) Path() (string, error) {
 	path, err := ref.Dir().Path()
 	if err != nil {
@@ -287,7 +265,7 @@ func (kf KnownFolder) Path() (path string, err error) {
 }
 
 // GetKnownFolder looks for a known folder with the given directory resource
-// ID. If one is found, it is returned and okay will be true.
+// ID. If one is found, it is returned and ok will be true.
 func GetKnownFolder(id DirectoryResourceID) (folder KnownFolder, ok bool) {
 	folder, ok = knownFolders[id]
 	return
