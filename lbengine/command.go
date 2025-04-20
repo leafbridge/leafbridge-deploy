@@ -136,7 +136,8 @@ func (engine *commandEngine) Invoke(ctx context.Context, files tempfs.Extraction
 	stopped := time.Now()
 
 	// Evaluate the effectiveness of any expected application changes.
-	appSummary, appSummaryErr := SummarizeAppChanges(engine.deployment.Apps, engine.apps)
+	ae := NewAppEngine(engine.deployment)
+	appSummary, appSummaryErr := ae.SummarizeAppChanges(engine.apps)
 	if appSummaryErr != nil {
 		appSummaryErr = fmt.Errorf("failed to determine the state of installed applications after the command was invoked: %w", appSummaryErr)
 		if err == nil {

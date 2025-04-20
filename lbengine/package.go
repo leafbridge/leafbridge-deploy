@@ -64,7 +64,8 @@ func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy
 	}
 
 	// Determine whether any app changes are anticipated.
-	appEvaluation, err := EvaluateAppChanges(engine.deployment.Apps, commandDefinition.Installs, commandDefinition.Uninstalls)
+	ae := NewAppEngine(engine.deployment)
+	appEvaluation, err := ae.EvaluateAppChanges(commandDefinition.Installs, commandDefinition.Uninstalls)
 	if err != nil {
 		return fmt.Errorf("the evaluation of potential application changes did not succeed: %w", err)
 	}

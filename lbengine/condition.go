@@ -16,7 +16,7 @@ type ConditionEngine struct {
 	deployment lbdeploy.Deployment
 }
 
-// NewConditionEngine prepare a condition engine for the given deployment.
+// NewConditionEngine prepares a condition engine for the given deployment.
 func NewConditionEngine(dep lbdeploy.Deployment) ConditionEngine {
 	return ConditionEngine{
 		deployment: dep,
@@ -28,6 +28,7 @@ func NewConditionEngine(dep lbdeploy.Deployment) ConditionEngine {
 // TODO: Consider returning some sort of evaluation struct that describes
 // the condition (or subconditions) that failed.
 func (engine ConditionEngine) Evaluate(condition lbdeploy.ConditionID) (bool, error) {
+	// Find the condition within the deployment.
 	definition, found := engine.deployment.Conditions[condition]
 	if !found {
 		return false, fmt.Errorf("the condition \"%s\" does not exist within the \"%s\" deployment", condition, engine.deployment.ID)
