@@ -8,6 +8,7 @@ type Resources struct {
 	Processes  ProcessResourceMap  `json:"processes,omitzero"`
 	Mutexes    MutexMap            `json:"mutexes,omitzero"`
 	Locks      LockMap             `json:"locks,omitzero"`
+	Registry   RegistryResources   `json:"registry,omitzero"`
 	FileSystem FileSystemResources `json:"file-system,omitzero"`
 	Packages   PackageMap          `json:"packages,omitzero"`
 }

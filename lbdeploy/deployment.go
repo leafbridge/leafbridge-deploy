@@ -129,6 +129,20 @@ func (dep Deployment) validateCondition(condition Condition) error {
 			if _, found := dep.Resources.Mutexes[MutexID(condition.Value)]; !found {
 				return fmt.Errorf("the condition references a mutex resource ID that is not defined: %s", condition.Value)
 			}
+		case ConditionRegistryKeyExists:
+			if condition.Value == "" {
+				return errors.New("the condition does not provide a registry key resource ID")
+			}
+			if _, found := dep.Resources.Registry.Keys[RegistryKeyResourceID(condition.Value)]; !found {
+				return fmt.Errorf("the condition references a registry key resource ID that is not defined: %s", condition.Value)
+			}
+		case ConditionRegistryValueExists:
+			if condition.Value == "" {
+				return errors.New("the condition does not provide a registry value resource ID")
+			}
+			if _, found := dep.Resources.Registry.Values[RegistryValueResourceID(condition.Value)]; !found {
+				return fmt.Errorf("the condition references a registry value resource ID that is not defined: %s", condition.Value)
+			}
 		case ConditionDirectoryExists:
 			if condition.Value == "" {
 				return errors.New("the condition does not provide a directory resource ID")

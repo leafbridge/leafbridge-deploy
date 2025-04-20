@@ -7,6 +7,7 @@ import (
 	"github.com/gentlemanautomaton/winobj/winmutex"
 	"github.com/leafbridge/leafbridge-deploy/lbdeploy"
 	"github.com/leafbridge/leafbridge-deploy/localfs"
+	"github.com/leafbridge/leafbridge-deploy/localregistry"
 )
 
 // ConditionEngine is responsible for evaluating conditions on the local
@@ -104,6 +105,34 @@ func (engine ConditionEngine) evaluate(condition lbdeploy.Condition) (bool, erro
 				return false, conditionSelfError(condition, err)
 			}
 			return exists, nil
+		case lbdeploy.ConditionRegistryKeyExists:
+			ref, err := engine.deployment.Resources.Registry.ResolveKey(lbdeploy.RegistryKeyResourceID(condition.Value))
+			if err != nil {
+				return false, conditionSelfError(condition, err)
+			}
+			key, err := localregistry.OpenKey(ref)
+			if err != nil {
+				if os.IsNotExist(err) {
+					return false, nil
+				}
+				return false, conditionSelfError(condition, err)
+			}
+			defer key.Close()
+			return true, nil
+		case lbdeploy.ConditionRegistryValueExists:
+			ref, err := engine.deployment.Resources.Registry.ResolveValue(lbdeploy.RegistryValueResourceID(condition.Value))
+			if err != nil {
+				return false, conditionSelfError(condition, err)
+			}
+			key, err := localregistry.OpenKey(ref.Key())
+			if err != nil {
+				if os.IsNotExist(err) {
+					return false, nil
+				}
+				return false, conditionSelfError(condition, err)
+			}
+			defer key.Close()
+			return key.HasValue(ref.ValueName)
 		case lbdeploy.ConditionDirectoryExists:
 			ref, err := engine.deployment.Resources.FileSystem.ResolveDirectory(lbdeploy.DirectoryResourceID(condition.Value))
 			if err != nil {

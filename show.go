@@ -11,6 +11,7 @@ import (
 	"github.com/gentlemanautomaton/winobj/winmutex"
 	"github.com/leafbridge/leafbridge-deploy/lbengine"
 	"github.com/leafbridge/leafbridge-deploy/localfs"
+	"github.com/leafbridge/leafbridge-deploy/localregistry"
 )
 
 // ShowCmd shows information that is relevant to a LeafBridge deployment.
@@ -176,6 +177,118 @@ func (cmd ShowResourcesCmd) Run(ctx context.Context) error {
 				} else {
 					fmt.Printf("      Status:      Missing\n")
 				}
+			}()
+		}
+	}
+
+	// Print registry key resources.
+	if keys := dep.Resources.Registry.Keys; len(keys) > 0 {
+		// Sort the registry key IDs for a deterministic order.
+		ids := slices.Collect(maps.Keys(keys))
+		slices.Sort(ids)
+
+		// Print information about each registry key.
+		fmt.Printf("  Registry Keys:\n")
+		for _, id := range ids {
+			func() {
+				fmt.Printf("    %s:\n", id)
+
+				// Resolve the registry key reference.
+				ref, err := dep.Resources.Registry.ResolveKey(id)
+				if err != nil {
+					fmt.Printf("      Path:        (%v)\n", err)
+					return
+				}
+
+				// Generate a registry key path.
+				path, err := ref.Path()
+				if err != nil {
+					fmt.Printf("      Path:        (%v)\n", err)
+					return
+				}
+
+				// Open the registry key.
+				key, err := localregistry.OpenKey(ref)
+				if err != nil {
+					fmt.Printf("      Path:        %s\n", path)
+					if os.IsNotExist(err) {
+						fmt.Printf("      Status:      Missing\n")
+					} else {
+						fmt.Printf("      Status:      (%v)\n", err)
+					}
+					return
+				}
+				defer key.Close()
+
+				// Print the path and status.
+				fmt.Printf("      Path:        %s\n", key.Path())
+				fmt.Printf("      Status:      Present\n")
+			}()
+		}
+	}
+
+	// Print registry value resources.
+	if values := dep.Resources.Registry.Values; len(values) > 0 {
+		// Sort the registry value IDs for a deterministic order.
+		ids := slices.Collect(maps.Keys(values))
+		slices.Sort(ids)
+
+		// Print information about each registry value.
+		fmt.Printf("  Registry Values:\n")
+		for _, id := range ids {
+			func() {
+				fmt.Printf("    %s:\n", id)
+
+				// Resolve the registry value reference.
+				ref, err := dep.Resources.Registry.ResolveValue(id)
+				if err != nil {
+					fmt.Printf("      Key:         (%v)\n", err)
+					fmt.Printf("      Name:        %s\n", ref.ValueName)
+					return
+				}
+
+				// Generate a registry key path.
+				path, err := ref.Key().Path()
+				if err != nil {
+					fmt.Printf("      Key:         (%v)\n", err)
+					fmt.Printf("      Name:        %s\n", ref.ValueName)
+					return
+				}
+
+				// Attempt to open the parent key.
+				key, err := localregistry.OpenKey(ref.Key())
+				if err != nil {
+					fmt.Printf("      Key:         %s\n", path)
+					fmt.Printf("      Name:        %s\n", ref.ValueName)
+					if os.IsNotExist(err) {
+						fmt.Printf("      Status:      Missing\n")
+					} else {
+						fmt.Printf("      Status:      (%v)\n", err)
+					}
+					return
+				}
+				defer key.Close()
+
+				// Print the key path and value name
+				fmt.Printf("      Key:         %s\n", key.Path())
+				fmt.Printf("      Name:        %s\n", ref.ValueName)
+
+				// Determine whether the registry value exists.
+				exists, err := key.HasValue(ref.ValueName)
+				if err != nil {
+					fmt.Printf("      Status:      (%v)\n", err)
+				}
+
+				if !exists {
+					fmt.Printf("      Status:      Missing\n")
+					return
+				}
+
+				fmt.Printf("      Status:      Present\n")
+
+				// TODO: Report statistics.
+				//fmt.Printf("      Modified: %s\n", fi.ModTime())
+				//fmt.Printf("      Size:     %d bytes(s)\n", fi.Size())
 			}()
 		}
 	}
