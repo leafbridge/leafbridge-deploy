@@ -78,6 +78,12 @@ func (engine *commandEngine) Invoke(ctx context.Context, files tempfs.Extraction
 		if err != nil {
 			return fmt.Errorf("failed to locate the Windows Installer executable: %w", err)
 		}
+	case lbdeploy.CommandTypeMSIUpdate:
+		args = append([]string{"/update", execPath, "/quiet"}, args...)
+		execPath, err = exec.LookPath("msiexec.exe")
+		if err != nil {
+			return fmt.Errorf("failed to locate the Windows Installer executable: %w", err)
+		}
 	case lbdeploy.CommandTypeMSIUninstall:
 		args = append([]string{"/x", execPath, "/quiet"}, args...)
 		execPath, err = exec.LookPath("msiexec.exe")

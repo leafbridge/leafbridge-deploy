@@ -7,5 +7,6 @@ type CommandType string
 const (
 	CommandTypeExe          = "exe"
 	CommandTypeMSIInstall   = "msi-install"
+	CommandTypeMSIUpdate    = "msi-update"
 	CommandTypeMSIUninstall = "msi-uninstall"
 )
