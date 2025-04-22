@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/leafbridge/leafbridge-deploy/idset"
 	"golang.org/x/sys/windows"
 )
 
@@ -170,25 +171,7 @@ func (ref DirRef) Path() (string, error) {
 }
 
 // DirectoryResourceSet holds a set of directory resource IDs.
-type DirectoryResourceSet map[DirectoryResourceID]struct{}
-
-// Contains returns true if the given id is present in the set.
-func (set DirectoryResourceSet) Contains(id DirectoryResourceID) bool {
-	_, present := set[id]
-	return present
-}
-
-// Contains adds the give id to the set. If it is already present, it takes
-// no action.
-func (set DirectoryResourceSet) Add(id DirectoryResourceID) {
-	set[id] = struct{}{}
-}
-
-// Remove removes the give id from the set. If it is not present, it takes
-// no action.
-func (set DirectoryResourceSet) Remove(id DirectoryResourceID) {
-	delete(set, id)
-}
+type DirectoryResourceSet = idset.SetOf[DirectoryResourceID]
 
 // FileResourceMap holds a set of file resources mapped by their identifiers.
 type FileResourceMap map[FileResourceID]FileResource

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/leafbridge/leafbridge-deploy/idset"
 	"golang.org/x/sys/windows/registry"
 )
 
@@ -189,25 +190,7 @@ func (ref RegistryKeyRef) Path() (string, error) {
 }
 
 // RegistryKeyResourceSet holds a set of registry key resource IDs.
-type RegistryKeyResourceSet map[RegistryKeyResourceID]struct{}
-
-// Contains returns true if the given id is present in the set.
-func (set RegistryKeyResourceSet) Contains(id RegistryKeyResourceID) bool {
-	_, present := set[id]
-	return present
-}
-
-// Add adds the given id to the set. If it is already present, it takes
-// no action.
-func (set RegistryKeyResourceSet) Add(id RegistryKeyResourceID) {
-	set[id] = struct{}{}
-}
-
-// Remove removes the given id from the set. If it is not present, it takes
-// no action.
-func (set RegistryKeyResourceSet) Remove(id RegistryKeyResourceID) {
-	delete(set, id)
-}
+type RegistryKeyResourceSet = idset.SetOf[RegistryKeyResourceID]
 
 // RegistryValueResourceMap holds a set of registry value resources mapped by
 // their identifiers.
