@@ -62,6 +62,7 @@ func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy
 	if !exists {
 		return fmt.Errorf("the command \"%s\" does not exist within the \"%s\" package", command, engine.pkg.ID)
 	}
+	data := commandData{ID: command, Definition: commandDefinition}
 
 	// Determine whether any app changes are anticipated.
 	ae := NewAppEngine(engine.deployment)
@@ -94,6 +95,98 @@ func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy
 		}
 	}
 
+	// TODO: Support non-package commands that are affiliated with a package
+	// but don't require the package to be present. This is most common for
+	// packages that are uninstalled through msiexec.
+
+	// Archive packages require special handling.
+	if engine.pkg.Definition.Type.IsArchive() {
+		return engine.invokeArchiveCommand(ctx, data, appEvaluation)
+	}
+
+	return engine.invokePackageCommand(ctx, data, appEvaluation)
+}
+
+// invokePackageCommand runs a command on an normal package.
+func (engine *packageEngine) invokePackageCommand(ctx context.Context, command commandData, apps lbdeploy.AppEvaluation) error {
+	// Check the state to see whether we've already downloaded and verified
+	// the package file.
+	packageDir, alreadyVerified := engine.state.verifiedPackageFiles[engine.pkg.ID]
+	if !alreadyVerified {
+		// Prepare the package directory.
+		var err error
+		packageDir, err = engine.openPackageDir()
+		if err != nil {
+			return fmt.Errorf("failed to prepare package file: %w", err)
+		}
+
+		// Prepare the package file.
+		err = func() error {
+			// Open the package file, or create it if it doesn't exist.
+			packageFile, err := packageDir.OpenFile(engine.pkg.Definition)
+			if err != nil {
+				return fmt.Errorf("failed to prepare package file: %w", err)
+			}
+			defer packageFile.Close()
+
+			// Prepare a download engine.
+			de := downloadEngine{
+				deployment: engine.deployment,
+				flow:       engine.flow,
+				action:     engine.action,
+				events:     engine.events,
+				state:      engine.state,
+			}
+
+			// Download and verify the package data.
+			//
+			// If the file already contains the expected data, the
+			// download will be skipped.
+			//
+			// If the file was partially downloaded, the download will be
+			// resumed.
+			if err := de.DownloadAndVerifyPackage(ctx, engine.pkg, packageFile); err != nil {
+				return err
+			}
+
+			return nil
+		}()
+
+		// If the package file could not be prepared, close the package
+		// directory without adding it to the state, then return the
+		// error.
+		if err != nil {
+			packageDir.Close()
+			return err
+		}
+
+		// Add the verified package file to the engine's state, so that
+		// it will be available for other flows.
+		//
+		// This will also cause the deployment engine to close the package
+		// directory after the deployment's invocation has finished.
+		engine.state.verifiedPackageFiles[engine.pkg.ID] = packageDir
+	}
+
+	// Prepare a command engine.
+	ce := commandEngine{
+		deployment: engine.deployment,
+		flow:       engine.flow,
+		action:     engine.action,
+		pkg:        engine.pkg,
+		command:    command,
+		apps:       apps,
+		events:     engine.events,
+		force:      engine.force,
+		state:      engine.state,
+	}
+
+	// Invoke the command.
+	return ce.InvokePackage(ctx, packageDir)
+}
+
+// invokeArchiveCommand runs a command on an archive package.
+func (engine *packageEngine) invokeArchiveCommand(ctx context.Context, command commandData, apps lbdeploy.AppEvaluation) error {
 	// Check the state to see whether we've already downloaded, verified and
 	// extracted the files in this package.
 	extractedFiles, alreadyExtracted := engine.state.extractedPackages[engine.pkg.ID]
@@ -156,7 +249,7 @@ func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy
 		// available for other flows.
 		//
 		// This will also cause the deployment engine to close the extracted
-		// files after the orginating flow has finished.
+		// files after the deployment's invocation has finished.
 		engine.state.extractedPackages[engine.pkg.ID] = extractedFiles
 	}
 
@@ -166,33 +259,35 @@ func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy
 		flow:       engine.flow,
 		action:     engine.action,
 		pkg:        engine.pkg,
-		command: commandData{
-			ID:         command,
-			Definition: commandDefinition,
-		},
-		apps:   appEvaluation,
-		events: engine.events,
-		force:  engine.force,
-		state:  engine.state,
+		command:    command,
+		apps:       apps,
+		events:     engine.events,
+		force:      engine.force,
+		state:      engine.state,
 	}
 
 	// Invoke the command.
-	return ce.Invoke(ctx, extractedFiles)
+	return ce.InvokeArchive(ctx, extractedFiles)
 }
 
-func (engine *packageEngine) openPackageFile() (stagingfs.PackageFile, error) {
+func (engine *packageEngine) openPackageDir() (stagingfs.PackageDir, error) {
 	// Open the deployment's staging directory.
 	deployDir, err := stagingfs.OpenDeployment(engine.deployment.ID)
 	if err != nil {
-		return stagingfs.PackageFile{}, err
+		return stagingfs.PackageDir{}, err
 	}
 	defer deployDir.Close()
 
 	// Open the package's staging directory.
-	packageDir, err := deployDir.OpenPackage(lbdeploy.PackageContent{
+	return deployDir.OpenPackage(lbdeploy.PackageContent{
 		ID:          engine.pkg.ID,
 		PrimaryHash: engine.pkg.Definition.Attributes.Hashes.Primary(),
 	})
+}
+
+func (engine *packageEngine) openPackageFile() (stagingfs.PackageFile, error) {
+	// Open the package's staging directory.
+	packageDir, err := engine.openPackageDir()
 	if err != nil {
 		return stagingfs.PackageFile{}, err
 	}

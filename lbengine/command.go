@@ -15,6 +15,7 @@ import (
 	"github.com/leafbridge/leafbridge-deploy/lbdeploy"
 	"github.com/leafbridge/leafbridge-deploy/lbdeployevent"
 	"github.com/leafbridge/leafbridge-deploy/lbevent"
+	"github.com/leafbridge/leafbridge-deploy/stagingfs"
 	"github.com/leafbridge/leafbridge-deploy/tempfs"
 )
 
@@ -37,8 +38,29 @@ type commandEngine struct {
 	state      *engineState
 }
 
-// Invoke runs the command.
-func (engine *commandEngine) Invoke(ctx context.Context, files tempfs.ExtractionDir) error {
+// InvokePackage runs the command on a package contained in dir.
+func (engine *commandEngine) InvokePackage(ctx context.Context, dir stagingfs.PackageDir) error {
+	// Verify that the executable file exists within the package's staging
+	// directory.
+	fi, err := dir.Stat(engine.pkg.Definition)
+	if err != nil {
+		return fmt.Errorf("verification of the command executable failed: %w", err)
+	}
+	if !fi.Mode().IsRegular() {
+		return errors.New("verification of the command executable failed: the executable file path is not a regular file")
+	}
+
+	// Prepare an absolute path for the command and its working directory.
+	execPath, err := dir.FilePath(engine.pkg.Definition)
+	if err != nil {
+		return fmt.Errorf("an executable file path could not be prepared for the \"%s\" command in the \"%s\" package: %w", engine.command.ID, engine.pkg.ID, err)
+	}
+
+	return engine.invoke(ctx, execPath)
+}
+
+// InvokeArchive runs the command on a set of extracted archive package files.
+func (engine *commandEngine) InvokeArchive(ctx context.Context, files tempfs.ExtractionDir) error {
 	// Get information about the executable file from the package.
 	fileID := engine.command.Definition.Executable
 	fileData, exists := engine.pkg.Definition.Files[fileID]
@@ -61,6 +83,10 @@ func (engine *commandEngine) Invoke(ctx context.Context, files tempfs.Extraction
 		return fmt.Errorf("an executable file path could not be prepared for the \"%s\" command in the \"%s\" package: %w", engine.command.ID, engine.pkg.ID, err)
 	}
 
+	return engine.invoke(ctx, execPath)
+}
+
+func (engine *commandEngine) invoke(ctx context.Context, execPath string) (err error) {
 	execDir := filepath.Dir(execPath)
 	if execDir == "" {
 		return fmt.Errorf("a working directory could not be determined for the \"%s\" command in the \"%s\" package", engine.command.ID, engine.pkg.ID)
@@ -191,11 +217,14 @@ func (engine *commandEngine) Invoke(ctx context.Context, files tempfs.Extraction
 	})
 
 	// Wait 5 seconds to let the file system and file locks quiesce before
-	// continuing on. This is especially important if this is the last action
-	// and LeafBridge attempts to delete extracted files immediately after
-	// this command has run.
+	// continuing on. This is especially important if this command is the last
+	// action running for an extracted archive, and LeafBridge attempts to
+	// delete extracted files immediately after this command has run.
 	//
 	// TODO: Make this delay configurable.
+	//
+	// TODO: Consider moving this to the state cleanup that actually deletes
+	// the extracted files.
 	timer := time.NewTimer(time.Second * 5)
 	select {
 	case <-ctx.Done():

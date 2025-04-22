@@ -52,6 +52,12 @@ func (engine DeploymentEngine) Invoke(ctx context.Context, flow lbdeploy.FlowID)
 			delete(engine.state.extractedPackages, packageID)
 		}
 
+		// Close any open package directories.
+		for packageID, packageDir := range engine.state.verifiedPackageFiles {
+			packageDir.Close()
+			delete(engine.state.verifiedPackageFiles, packageID)
+		}
+
 		// Release and close all locks.
 		engine.state.locks.CloseAll()
 	}()

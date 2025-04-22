@@ -123,7 +123,7 @@ func (d ExtractionDir) FilePath(path string) (string, error) {
 	return filepath.Join(d.path, localized), nil
 }
 
-// Stat returns a [FileInfo] describing the named file in the root.
+// Stat returns a [os.FileInfo] describing the named file in the root.
 func (d ExtractionDir) Stat(path string) (os.FileInfo, error) {
 	// Localize the file path, which ensures that it conforms to the
 	// local file system path separators and is in fact a relative path.

@@ -46,6 +46,17 @@ func (content PackageContent) String() string {
 // PackageType declares the type of a package.
 type PackageType string
 
+// IsArchive returns true if the package type is an archive that must be
+// extracted before use.
+func (t PackageType) IsArchive() bool {
+	switch t {
+	case "archive":
+		return true
+	default:
+		return false
+	}
+}
+
 // PackageFormat declares the format of a package.
 type PackageFormat string
 
@@ -75,6 +86,10 @@ func (pkg Package) FileName() string {
 // If the package type is not recognized, it returns "file".
 func (pkg Package) FileExtension() string {
 	switch pkg.Type {
+	case "exe":
+		return "exe"
+	case "msi":
+		return "msi"
 	case "archive":
 		switch pkg.Format {
 		case "zip":
@@ -89,6 +104,8 @@ func (pkg Package) FileExtension() string {
 func (pkg Package) Validate() error {
 	// Validate package type and format.
 	switch pkg.Type {
+	case "exe":
+	case "msi":
 	case "archive":
 		switch pkg.Format {
 		case "zip":
