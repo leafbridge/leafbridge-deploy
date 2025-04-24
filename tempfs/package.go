@@ -53,8 +53,11 @@ func OpenExtractionDirForPackage(pkg lbdeploy.PackageContent, opts Options) (Ext
 	// Note that We might call os.RemoveAll() on the path later, and we really
 	// don't want to make that call on an unintended path, especially when
 	// operating with SYSTEM privileges.
-	if !strings.Contains(dirPath, "leafbridge") || !strings.Contains(dirPath, "Temp") {
-		return ExtractionDir{}, fmt.Errorf("the os.MkdirTemp call failed to create a direcoty with the expected format: %s", dirPath)
+	{
+		dirPath := strings.ToLower(dirPath) // Case-insensitive search
+		if !strings.Contains(dirPath, "leafbridge") || !strings.Contains(dirPath, "temp") {
+			return ExtractionDir{}, fmt.Errorf("the os.MkdirTemp call failed to create a directory with the expected format: %s", dirPath)
+		}
 	}
 
 	// Open the root of the newly created temp directory.
