@@ -3,6 +3,15 @@ package lbdeploy
 // ActionType identifies the type of action.
 type ActionType string
 
+// Recognized action types.
+const (
+	ActionStartFlow      ActionType = "start-flow"
+	ActionPreparePackage ActionType = "prepare-package"
+	ActionInvokePackage  ActionType = "invoke-package"
+	ActionCopyFile       ActionType = "copy-file"
+	ActionDeleteFile     ActionType = "delete-file"
+)
+
 // Action describes an action to be taken as part of a flow.
 type Action struct {
 	Type            ActionType          `json:"action"`

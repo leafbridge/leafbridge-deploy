@@ -41,23 +41,23 @@ func (engine *actionEngine) Invoke(ctx context.Context) error {
 	// Execute the action.
 	err := func() error {
 		switch engine.action.Definition.Type {
-		case "start-flow":
+		case lbdeploy.ActionStartFlow:
 			if err := engine.startFlow(ctx); err != nil {
 				return err
 			}
-		case "prepare-package":
+		case lbdeploy.ActionPreparePackage:
 			if err := engine.preparePackage(ctx); err != nil {
 				return err
 			}
-		case "invoke-package":
+		case lbdeploy.ActionInvokePackage:
 			if err := engine.invokePackage(ctx); err != nil {
 				return err
 			}
-		case "copy-file":
+		case lbdeploy.ActionCopyFile:
 			if err := engine.copyFile(ctx); err != nil {
 				return err
 			}
-		case "delete-file":
+		case lbdeploy.ActionDeleteFile:
 			if err := engine.deleteFile(ctx); err != nil {
 				return err
 			}
