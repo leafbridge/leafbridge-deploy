@@ -66,13 +66,13 @@ type PackageFormat string
 // files will be extracted to. If a destination is not provided, then fall
 // back to the current approach that extracts files to a temporary directory.
 type Package struct {
-	Name       string            `json:"name,omitempty"`
-	Type       PackageType       `json:"type,omitempty"`
-	Format     PackageFormat     `json:"format,omitempty"`
-	Sources    []PackageSource   `json:"sources,omitempty"`
-	Attributes FileAttributes    `json:"attributes,omitzero"`
-	Files      PackageFileMap    `json:"files,omitzero"`
-	Commands   PackageCommandMap `json:"commands,omitzero"`
+	Name       string          `json:"name,omitempty"`
+	Type       PackageType     `json:"type,omitempty"`
+	Format     PackageFormat   `json:"format,omitempty"`
+	Sources    []PackageSource `json:"sources,omitempty"`
+	Attributes FileAttributes  `json:"attributes,omitzero"`
+	Files      PackageFileMap  `json:"files,omitzero"`
+	Commands   CommandMap      `json:"commands,omitzero"`
 	//Destinations []DirectoryResourceID `json:"destinations,omitempty"`
 }
 
@@ -134,7 +134,7 @@ func (pkg Package) Validate() error {
 			if pkg.Type != "archive" {
 				return fmt.Errorf("package command \"%s\": an executable file ID is only valid for archive packages", id)
 			}
-			if _, ok := pkg.Files[command.Executable]; !ok {
+			if _, ok := pkg.Files[PackageFileID(command.Executable)]; !ok {
 				return fmt.Errorf("package command \"%s\": the executable file ID refers to package file \"%s\", which is not defined in the package file set", id, command.Executable)
 			}
 		}
@@ -183,24 +183,4 @@ type PackageFileID string
 type PackageFile struct {
 	Path       string         `json:"path"`
 	Attributes FileAttributes `json:"attributes,omitzero"`
-}
-
-// PackageCommandMap defines a set of commands that can be issued for a
-// package, mapped by their identifiers.
-type PackageCommandMap map[PackageCommandID]PackageCommand
-
-// PackageCommandID is a unique identifier for a package command.
-type PackageCommandID string
-
-// PackageCommand defines a command that can be invoked for a package.
-// For archive packages, it also identifiers an executable within the
-// package.
-//
-// TODO: Support variable expansion when building arguments.
-type PackageCommand struct {
-	Installs   AppList       `json:"installs,omitzero"`
-	Uninstalls AppList       `json:"uninstalls,omitzero"`
-	Type       CommandType   `json:"type,omitempty"`
-	Executable PackageFileID `json:"executable,omitempty"`
-	Args       []string      `json:"args,omitzero"`
 }

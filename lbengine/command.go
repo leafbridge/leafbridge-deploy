@@ -15,17 +15,18 @@ import (
 	"github.com/leafbridge/leafbridge-deploy/lbdeploy"
 	"github.com/leafbridge/leafbridge-deploy/lbdeployevent"
 	"github.com/leafbridge/leafbridge-deploy/lbevent"
+	"github.com/leafbridge/leafbridge-deploy/localfs"
 	"github.com/leafbridge/leafbridge-deploy/stagingfs"
 	"github.com/leafbridge/leafbridge-deploy/tempfs"
 )
 
-// commandData holds the ID and definition for a package.
+// commandData holds the ID and definition for a command.
 type commandData struct {
-	ID         lbdeploy.PackageCommandID
-	Definition lbdeploy.PackageCommand
+	ID         lbdeploy.CommandID
+	Definition lbdeploy.Command
 }
 
-// commandEngine manages invocation of a command for a package.
+// commandEngine manages invocation of a command.
 type commandEngine struct {
 	deployment lbdeploy.Deployment
 	flow       flowData
@@ -36,6 +37,41 @@ type commandEngine struct {
 	events     lbevent.Recorder
 	force      bool
 	state      *engineState
+}
+
+// InvokeStandard runs the command without a package affiliation.
+func (engine *commandEngine) InvokeStandard(ctx context.Context) error {
+	// Get information about the executable file from the file system.
+	fileID := lbdeploy.FileResourceID(engine.command.Definition.Executable)
+	fileRef, err := engine.deployment.Resources.FileSystem.ResolveFile(fileID)
+	if err != nil {
+		return fmt.Errorf("the \"%s\" command refers to an executable file \"%s\" that could not be resolved: %w", engine.command.ID, fileID, err)
+	}
+
+	// Open the directory above the executable file.
+	fileDir, err := localfs.OpenDir(fileRef.Dir())
+	if err != nil {
+		return fmt.Errorf("verification of the command executable failed: %w", err)
+	}
+	defer fileDir.Close()
+
+	// Verify that the executable file exists and is a regular file.
+	fi, err := fileDir.System().Stat(fileRef.FilePath)
+	if err != nil {
+		return fmt.Errorf("verification of the command executable failed: %w", err)
+	}
+	if !fi.Mode().IsRegular() {
+		return errors.New("verification of the command executable failed: the executable file path is not a regular file")
+	}
+
+	// Prepare an absolute path for the command and its working directory.
+	localized, err := filepath.Localize(fileRef.FilePath)
+	if err != nil {
+		return fmt.Errorf("an executable file path could not be prepared for the \"%s\" command: %w", engine.command.ID, err)
+	}
+	execPath := filepath.Join(fileDir.Path(), localized)
+
+	return engine.invoke(ctx, execPath)
 }
 
 // InvokePackage runs the command on a package contained in dir.
@@ -62,7 +98,7 @@ func (engine *commandEngine) InvokePackage(ctx context.Context, dir stagingfs.Pa
 // InvokeArchive runs the command on a set of extracted archive package files.
 func (engine *commandEngine) InvokeArchive(ctx context.Context, files tempfs.ExtractionDir) error {
 	// Get information about the executable file from the package.
-	fileID := engine.command.Definition.Executable
+	fileID := lbdeploy.PackageFileID(engine.command.Definition.Executable)
 	fileData, exists := engine.pkg.Definition.Files[fileID]
 	if !exists {
 		return fmt.Errorf("the command \"%s\" refers to an executable file \"%s\" that is not defined in the \"%s\" package", engine.command.ID, fileID, engine.pkg.ID)

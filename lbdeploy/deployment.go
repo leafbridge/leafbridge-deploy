@@ -23,6 +23,7 @@ type Deployment struct {
 	Name       string       `json:"name,omitempty"`
 	Apps       AppMap       `json:"apps,omitzero"`
 	Conditions ConditionMap `json:"conditions,omitzero"`
+	Commands   CommandMap   `json:"commands,omitzero"`
 	Resources  Resources    `json:"resources,omitzero"`
 	Flows      FlowMap      `json:"flows,omitzero"`
 }

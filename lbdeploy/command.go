@@ -10,3 +10,44 @@ const (
 	CommandTypeMSIUpdate    = "msi-update"
 	CommandTypeMSIUninstall = "msi-uninstall"
 )
+
+// CommandMap defines a set of commands that can be issued, mapped by their
+// identifiers.
+type CommandMap map[CommandID]Command
+
+// CommandID is a unique identifier for a command.
+type CommandID string
+
+// ExecutableID is either a FileResourceID or a PackageFileID, depending on
+// whether the command is a regular command or a package command.
+type ExecutableID string
+
+// Command defines a command that can be invoked for a deployment or
+// package.
+//
+// TODO: Support variable expansion when building arguments.
+type Command struct {
+	// Installs is a list of applications that the command installs.
+	Installs AppList `json:"installs,omitzero"`
+
+	// Uninstalls is a list of applicaitons that the command uninstalls.
+	Uninstalls AppList `json:"uninstalls,omitzero"`
+
+	// Type is the type of command to be run.
+	Type CommandType `json:"type,omitempty"`
+
+	// Executable identifies an executable file to be run.
+	//
+	// For commands applied to archive packages, it identifies the executable
+	// file within the archive, and will be interpreted as a PackageFileID.
+	//
+	// For non-pacakge commands, it identifies the executable file to be
+	// invoked, and will be interpreted as a FileResourceID.
+	//
+	// For msi-based commands, the file will be provided to the msiexec
+	// utility.
+	Executable ExecutableID `json:"executable,omitempty"`
+
+	// Args is the set of arguments to be passed to the command.
+	Args []string `json:"args,omitzero"`
+}

@@ -7,7 +7,7 @@ type ActionType string
 const (
 	ActionStartFlow      ActionType = "start-flow"
 	ActionPreparePackage ActionType = "prepare-package"
-	ActionInvokePackage  ActionType = "invoke-package"
+	ActionInvokeCommand  ActionType = "invoke-command"
 	ActionCopyFile       ActionType = "copy-file"
 	ActionDeleteFile     ActionType = "delete-file"
 )
@@ -16,7 +16,7 @@ const (
 type Action struct {
 	Type            ActionType          `json:"action"`
 	Package         PackageID           `json:"package,omitempty"`
-	Command         PackageCommandID    `json:"command,omitempty"`
+	Command         CommandID           `json:"command,omitempty"`
 	Force           bool                `json:"force,omitempty"`
 	Flow            FlowID              `json:"flow,omitempty"`
 	SourceFile      FileResourceID      `json:"source-file,omitempty"`

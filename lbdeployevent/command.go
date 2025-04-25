@@ -18,7 +18,7 @@ type CommandSkipped struct {
 	ActionIndex int
 	ActionType  lbdeploy.ActionType
 	Package     lbdeploy.PackageID
-	Command     lbdeploy.PackageCommandID
+	Command     lbdeploy.CommandID
 	Apps        lbdeploy.AppEvaluation
 }
 
@@ -40,7 +40,11 @@ func (e CommandSkipped) Message() string {
 	builder.WritePrimary(string(e.Flow))
 	builder.WritePrimary(strconv.Itoa(e.ActionIndex + 1))
 	builder.WritePrimary(string(e.ActionType))
-	builder.WritePrimary(fmt.Sprintf("%s.%s", e.Package, e.Command))
+	if e.Package == "" {
+		builder.WritePrimary(string(e.Command))
+	} else {
+		builder.WritePrimary(fmt.Sprintf("%s.%s", e.Package, e.Command))
+	}
 	builder.WriteStandard("Skipped command")
 	if len(e.Apps.AlreadyInstalled) > 0 {
 		builder.WriteNote(fmt.Sprintf("[%s]", e.Apps.AlreadyInstalled), fieldformat.Label("already installed"))
@@ -65,9 +69,11 @@ func (e CommandSkipped) Attrs() []slog.Attr {
 		slog.String("deployment", string(e.Deployment)),
 		slog.String("flow", string(e.Flow)),
 		slog.Group("action", "index", e.ActionIndex, "type", e.ActionType),
-		slog.String("package", string(e.Package)),
-		slog.Group("command", "id", e.Command),
 	}
+	if e.Package != "" {
+		attrs = append(attrs, slog.String("package", string(e.Package)))
+	}
+	attrs = append(attrs, slog.Group("command", "id", e.Command))
 	if !e.Apps.IsZero() {
 		attrs = append(attrs, slog.Group("affected-apps",
 			"already-installed", e.Apps.AlreadyInstalled,
@@ -85,7 +91,7 @@ type CommandStarted struct {
 	ActionIndex int
 	ActionType  lbdeploy.ActionType
 	Package     lbdeploy.PackageID
-	Command     lbdeploy.PackageCommandID
+	Command     lbdeploy.CommandID
 	CommandLine string
 	Apps        lbdeploy.AppEvaluation
 }
@@ -108,7 +114,11 @@ func (e CommandStarted) Message() string {
 	builder.WritePrimary(string(e.Flow))
 	builder.WritePrimary(strconv.Itoa(e.ActionIndex + 1))
 	builder.WritePrimary(string(e.ActionType))
-	builder.WritePrimary(fmt.Sprintf("%s.%s", e.Package, e.Command))
+	if e.Package == "" {
+		builder.WritePrimary(string(e.Command))
+	} else {
+		builder.WritePrimary(fmt.Sprintf("%s.%s", e.Package, e.Command))
+	}
 	switch installs, uninstalls := len(e.Apps.ToInstall), len(e.Apps.ToUninstall); {
 	case installs > 0 && uninstalls > 0:
 		builder.WritePrimary(fmt.Sprintf("Starting command to install %s and uninstall %s", e.Apps.ToInstall, e.Apps.ToUninstall))
@@ -137,9 +147,11 @@ func (e CommandStarted) Attrs() []slog.Attr {
 		slog.String("deployment", string(e.Deployment)),
 		slog.String("flow", string(e.Flow)),
 		slog.Group("action", "index", e.ActionIndex, "type", e.ActionType),
-		slog.String("package", string(e.Package)),
-		slog.Group("command", "id", e.Command, "invocation", e.CommandLine),
 	}
+	if e.Package != "" {
+		attrs = append(attrs, slog.String("package", string(e.Package)))
+	}
+	attrs = append(attrs, slog.Group("command", "id", e.Command, "invocation", e.CommandLine))
 	if !e.Apps.IsZero() {
 		attrs = append(attrs, slog.Group("affected-apps",
 			"already-installed", e.Apps.AlreadyInstalled,
@@ -157,7 +169,7 @@ type CommandStopped struct {
 	ActionIndex int
 	ActionType  lbdeploy.ActionType
 	Package     lbdeploy.PackageID
-	Command     lbdeploy.PackageCommandID
+	Command     lbdeploy.CommandID
 	CommandLine string
 	Output      string
 	AppsBefore  lbdeploy.AppEvaluation
@@ -188,7 +200,11 @@ func (e CommandStopped) Message() string {
 	builder.WritePrimary(string(e.Flow))
 	builder.WritePrimary(strconv.Itoa(e.ActionIndex + 1))
 	builder.WritePrimary(string(e.ActionType))
-	builder.WritePrimary(fmt.Sprintf("%s.%s", e.Package, e.Command))
+	if e.Package == "" {
+		builder.WritePrimary(string(e.Command))
+	} else {
+		builder.WritePrimary(fmt.Sprintf("%s.%s", e.Package, e.Command))
+	}
 	if e.Err != nil {
 		builder.WriteStandard(fmt.Sprintf("Stopped command due to an error: %s", e.Err))
 	} else if err := e.AppsAfter.Err(); err != nil {
@@ -206,7 +222,7 @@ func (e CommandStopped) Message() string {
 // are available.
 func (e CommandStopped) Details() string {
 	if e.Output == "" {
-		return ""
+		return e.CommandLine
 	}
 
 	return fmt.Sprintf("%s\n%s", e.CommandLine, e.Output)
@@ -218,11 +234,15 @@ func (e CommandStopped) Attrs() []slog.Attr {
 		slog.String("deployment", string(e.Deployment)),
 		slog.String("flow", string(e.Flow)),
 		slog.Group("action", "index", e.ActionIndex, "type", e.ActionType),
-		slog.String("package", string(e.Package)),
+	}
+	if e.Package != "" {
+		attrs = append(attrs, slog.String("package", string(e.Package)))
+	}
+	attrs = append(attrs,
 		slog.Group("command", "id", e.Command, "invocation", e.CommandLine),
 		slog.Time("started", e.Started),
 		slog.Time("stopped", e.Stopped),
-	}
+	)
 	if !e.AppsBefore.IsZero() {
 		attrs = append(attrs, slog.Group("affected-apps-before",
 			"already-installed", e.AppsBefore.AlreadyInstalled,

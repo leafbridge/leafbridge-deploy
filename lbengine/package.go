@@ -56,7 +56,7 @@ func (engine *packageEngine) PreparePackage(ctx context.Context) error {
 }
 
 // InvokeCommand performs a package command invocation action.
-func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy.PackageCommandID) error {
+func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy.CommandID) error {
 	// Find the command within the package.
 	commandDefinition, exists := engine.pkg.Definition.Commands[command]
 	if !exists {

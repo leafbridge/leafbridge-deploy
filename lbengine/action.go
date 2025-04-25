@@ -49,8 +49,8 @@ func (engine *actionEngine) Invoke(ctx context.Context) error {
 			if err := engine.preparePackage(ctx); err != nil {
 				return err
 			}
-		case lbdeploy.ActionInvokePackage:
-			if err := engine.invokePackage(ctx); err != nil {
+		case lbdeploy.ActionInvokeCommand:
+			if err := engine.invokeCommand(ctx); err != nil {
 				return err
 			}
 		case lbdeploy.ActionCopyFile:
@@ -91,7 +91,7 @@ func (engine *actionEngine) startFlow(ctx context.Context) error {
 	// Find the requested flow within the deployment.
 	definition, found := engine.deployment.Flows[flow]
 	if !found {
-		return fmt.Errorf("the flow \"%s\" does not exist within the \"%s\" deployment", flow, engine.deployment.ID)
+		return fmt.Errorf("the \"%s\" flow does not exist within the \"%s\" deployment", flow, engine.deployment.ID)
 	}
 
 	// Prepare the flow engine.
@@ -116,7 +116,7 @@ func (engine *actionEngine) preparePackage(ctx context.Context) error {
 	// Look up the package by its ID.
 	pkg, found := engine.deployment.Resources.Packages[engine.action.Definition.Package]
 	if !found {
-		return fmt.Errorf("the package \"%s\" does not exist within the \"%s\" deployment", engine.action.Definition.Package, engine.deployment.ID)
+		return fmt.Errorf("the \"%s\" package does not exist within the \"%s\" deployment", engine.action.Definition.Package, engine.deployment.ID)
 	}
 
 	// Prepare a package engine.
@@ -137,30 +137,88 @@ func (engine *actionEngine) preparePackage(ctx context.Context) error {
 	return pe.PreparePackage(ctx)
 }
 
-// invokePackage invokes a package command action.
-func (engine *actionEngine) invokePackage(ctx context.Context) error {
-	// Look up the package by its ID.
-	pkg, found := engine.deployment.Resources.Packages[engine.action.Definition.Package]
-	if !found {
-		return fmt.Errorf("the package \"%s\" does not exist within the \"%s\" deployment", engine.action.Definition.Package, engine.deployment.ID)
+// invokeCommand invokes a command action.
+func (engine *actionEngine) invokeCommand(ctx context.Context) error {
+	// Special handling for package-based commands.
+	if engine.action.Definition.Package != "" {
+		// Look up the package by its ID.
+		pkg, found := engine.deployment.Resources.Packages[engine.action.Definition.Package]
+		if !found {
+			return fmt.Errorf("the \"%s\" package does not exist within the \"%s\" deployment", engine.action.Definition.Package, engine.deployment.ID)
+		}
+
+		// Prepare a package engine.
+		pe := packageEngine{
+			deployment: engine.deployment,
+			flow:       engine.flow,
+			action:     engine.action,
+			pkg: packageData{
+				ID:         engine.action.Definition.Package,
+				Definition: pkg,
+			},
+			events: engine.events,
+			force:  engine.force,
+			state:  engine.state,
+		}
+
+		// Execute the package command via the package engine.
+		return pe.InvokeCommand(ctx, engine.action.Definition.Command)
 	}
 
-	// Prepare a package engine.
-	pe := packageEngine{
+	// Look up the command by its ID.
+	var command commandData
+	{
+		definition, found := engine.deployment.Commands[engine.action.Definition.Command]
+		if !found {
+			return fmt.Errorf("the \"%s\" command does not exist within the \"%s\" deployment", engine.action.Definition.Command, engine.deployment.ID)
+		}
+		command = commandData{ID: engine.action.Definition.Command, Definition: definition}
+	}
+
+	// Determine whether any app changes are anticipated.
+	ae := NewAppEngine(engine.deployment)
+	appEvaluation, err := ae.EvaluateAppChanges(command.Definition.Installs, command.Definition.Uninstalls)
+	if err != nil {
+		return fmt.Errorf("the evaluation of potential application changes did not succeed: %w", err)
+	}
+
+	// If the command declares that it installs or uninstalls something,
+	// review the app evaluation to determine whether any application changes
+	// are anticpated.
+	if len(command.Definition.Installs) > 0 || len(command.Definition.Uninstalls) > 0 {
+		if !appEvaluation.ActionsNeeded() {
+			// If all app installs and uninstalls are already in effect,
+			// and command invocation isn't forced, skip this command.
+			if !engine.force && !engine.action.Definition.Force {
+				// Record that this command is being skipped.
+				engine.events.Record(lbdeployevent.CommandSkipped{
+					Deployment:  engine.deployment.ID,
+					Flow:        engine.flow.ID,
+					ActionIndex: engine.action.Index,
+					ActionType:  engine.action.Definition.Type,
+					Command:     command.ID,
+					Apps:        appEvaluation,
+				})
+
+				return nil
+			}
+		}
+	}
+
+	// Prepare a command engine.
+	ce := commandEngine{
 		deployment: engine.deployment,
 		flow:       engine.flow,
 		action:     engine.action,
-		pkg: packageData{
-			ID:         engine.action.Definition.Package,
-			Definition: pkg,
-		},
-		events: engine.events,
-		force:  engine.force,
-		state:  engine.state,
+		command:    command,
+		apps:       appEvaluation,
+		events:     engine.events,
+		force:      engine.force,
+		state:      engine.state,
 	}
 
-	// Execute the install-package action via the package engine.
-	return pe.InvokeCommand(ctx, engine.action.Definition.Command)
+	// Invoke the command.
+	return ce.InvokeStandard(ctx)
 }
 
 // copyFile performs a file copy operation.
