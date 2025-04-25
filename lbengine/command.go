@@ -131,7 +131,7 @@ func (engine *commandEngine) InvokeApp(ctx context.Context, app lbdeploy.AppID) 
 	}
 
 	// Make sure a product code is defined.
-	if appData.ID == "" {
+	if appData.ProductCode == "" {
 		return fmt.Errorf("the \"%s\" command refers to an application \"%s\" that does not have a product code", engine.command.ID, app)
 	}
 
@@ -144,7 +144,7 @@ func (engine *commandEngine) InvokeApp(ctx context.Context, app lbdeploy.AppID) 
 	// https://learn.microsoft.com/en-us/windows/win32/api/msi/nf-msi-msiinstallproductw
 	switch engine.command.Definition.Type {
 	case lbdeploy.CommandTypeMSIUninstallProductCode:
-		args = append([]string{"/x", string(appData.ID), "/quiet"}, args...)
+		args = append([]string{"/x", string(appData.ProductCode), "/quiet"}, args...)
 	default:
 		return fmt.Errorf("the \"%s\" command type is not recognized or is not suitable for app-based invocation", engine.command.Definition.Type)
 	}

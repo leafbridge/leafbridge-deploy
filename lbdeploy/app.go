@@ -47,6 +47,10 @@ func (list AppList) String() string {
 // AppID is a unique identifier for an application within LeafBridge.
 type AppID string
 
+// ProductCode is an application's product code that uniquely identifies
+// it to the operating system.
+type ProductCode = unpackaged.AppID
+
 // Application hold identifying information for an application.
 //
 // If it defines an architecture, scope and unpackaged app ID, these will be
@@ -59,7 +63,7 @@ type Application struct {
 	Name         string               `json:"name"`
 	Architecture appcode.Architecture `json:"architecture,omitempty"`
 	Scope        appscope.Scope       `json:"scope,omitempty"`
-	ID           unpackaged.AppID     `json:"id,omitempty"`
+	ProductCode  ProductCode          `json:"product-code,omitempty"`
 	Condition    ConditionID          `json:"condition,omitempty"`
 }
 

@@ -46,7 +46,7 @@ func (engine AppEngine) IsInstalled(app lbdeploy.AppID) (bool, error) {
 	}
 
 	// Look for the application in the registry.
-	return view.Contains(definition.ID)
+	return view.Contains(definition.ProductCode)
 }
 
 // InstalledApps returns any of the apps in the list that are installed on the
