@@ -95,15 +95,20 @@ func (engine *packageEngine) InvokeCommand(ctx context.Context, command lbdeploy
 		}
 	}
 
-	// TODO: Support non-package commands that are affiliated with a package
-	// but don't require the package to be present. This is most common for
+	// Handle app-based commands that are affiliated with a package but don't
+	// require the package to actually be present. This is most common for
 	// packages that are uninstalled through msiexec.
+	if commandDefinition.Type.IsAppBased() {
+		return engine.invokeAppCommand(ctx, data, appEvaluation)
+	}
 
-	// Archive packages require special handling.
+	// Handle commands for archive packages that must be downloaded and
+	// extracted first.
 	if engine.pkg.Definition.Type.IsArchive() {
 		return engine.invokeArchiveCommand(ctx, data, appEvaluation)
 	}
 
+	// Handle commands for regular packages that must be downloaded first.
 	return engine.invokePackageCommand(ctx, data, appEvaluation)
 }
 
@@ -268,6 +273,36 @@ func (engine *packageEngine) invokeArchiveCommand(ctx context.Context, command c
 
 	// Invoke the command.
 	return ce.InvokeArchive(ctx, extractedFiles)
+}
+
+// invokeAppCommand runs a command on an applicatoin.
+func (engine *packageEngine) invokeAppCommand(ctx context.Context, command commandData, apps lbdeploy.AppEvaluation) error {
+	// Prepare a command engine.
+	ce := commandEngine{
+		deployment: engine.deployment,
+		flow:       engine.flow,
+		action:     engine.action,
+		pkg:        engine.pkg,
+		command:    command,
+		apps:       apps,
+		events:     engine.events,
+		force:      engine.force,
+		state:      engine.state,
+	}
+
+	// Invoke the command for each application.
+	switch command.Definition.Type {
+	case lbdeploy.CommandTypeMSIUninstallProductCode:
+		for _, app := range apps.ToUninstall {
+			if err := ce.InvokeApp(ctx, app); err != nil {
+				return err
+			}
+		}
+	default:
+		return fmt.Errorf("the \"%s\" command type is not recognized or is not suitable for app-based invocation", command.Definition.Type)
+	}
+
+	return nil
 }
 
 func (engine *packageEngine) openPackageDir() (stagingfs.PackageDir, error) {

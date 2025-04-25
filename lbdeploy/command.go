@@ -5,11 +5,18 @@ type CommandType string
 
 // Command types.
 const (
-	CommandTypeExe          = "exe"
-	CommandTypeMSIInstall   = "msi-install"
-	CommandTypeMSIUpdate    = "msi-update"
-	CommandTypeMSIUninstall = "msi-uninstall"
+	CommandTypeExe                     = "exe"
+	CommandTypeMSIInstall              = "msi-install"
+	CommandTypeMSIUpdate               = "msi-update"
+	CommandTypeMSIUninstall            = "msi-uninstall"
+	CommandTypeMSIUninstallProductCode = "msi-uninstall-product-code"
 )
+
+// IsAppBased returns true if the command applies to an application's product
+// code, and not to a provided executable or installer file.
+func (t CommandType) IsAppBased() bool {
+	return t == CommandTypeMSIUninstallProductCode
+}
 
 // CommandMap defines a set of commands that can be issued, mapped by their
 // identifiers.

@@ -71,7 +71,7 @@ func (engine *commandEngine) InvokeStandard(ctx context.Context) error {
 	}
 	execPath := filepath.Join(fileDir.Path(), localized)
 
-	return engine.invoke(ctx, execPath)
+	return engine.invokePath(ctx, execPath)
 }
 
 // InvokePackage runs the command on a package contained in dir.
@@ -92,7 +92,7 @@ func (engine *commandEngine) InvokePackage(ctx context.Context, dir stagingfs.Pa
 		return fmt.Errorf("an executable file path could not be prepared for the \"%s\" command in the \"%s\" package: %w", engine.command.ID, engine.pkg.ID, err)
 	}
 
-	return engine.invoke(ctx, execPath)
+	return engine.invokePath(ctx, execPath)
 }
 
 // InvokeArchive runs the command on a set of extracted archive package files.
@@ -101,7 +101,7 @@ func (engine *commandEngine) InvokeArchive(ctx context.Context, files tempfs.Ext
 	fileID := lbdeploy.PackageFileID(engine.command.Definition.Executable)
 	fileData, exists := engine.pkg.Definition.Files[fileID]
 	if !exists {
-		return fmt.Errorf("the command \"%s\" refers to an executable file \"%s\" that is not defined in the \"%s\" package", engine.command.ID, fileID, engine.pkg.ID)
+		return fmt.Errorf("the \"%s\" command refers to an executable file \"%s\" that is not defined in the \"%s\" package", engine.command.ID, fileID, engine.pkg.ID)
 	}
 
 	// Verify that the executable file exists within the extracted file set.
@@ -119,10 +119,47 @@ func (engine *commandEngine) InvokeArchive(ctx context.Context, files tempfs.Ext
 		return fmt.Errorf("an executable file path could not be prepared for the \"%s\" command in the \"%s\" package: %w", engine.command.ID, engine.pkg.ID, err)
 	}
 
-	return engine.invoke(ctx, execPath)
+	return engine.invokePath(ctx, execPath)
 }
 
-func (engine *commandEngine) invoke(ctx context.Context, execPath string) (err error) {
+// InvokeApp runs the command against an application's product code.
+func (engine *commandEngine) InvokeApp(ctx context.Context, app lbdeploy.AppID) error {
+	// Get information about the application from the deployment.
+	appData, exists := engine.deployment.Apps[app]
+	if !exists {
+		return fmt.Errorf("the \"%s\" command refers to an application \"%s\" that is not defined in the \"%s\" deployment", engine.command.ID, app, engine.deployment.ID)
+	}
+
+	// Make sure a product code is defined.
+	if appData.ID == "" {
+		return fmt.Errorf("the \"%s\" command refers to an application \"%s\" that does not have a product code", engine.command.ID, app)
+	}
+
+	// Prepare the command arguments.
+	args := engine.command.Definition.Args
+
+	// Handle app-based command types.
+	//
+	// TODO: Switch to the Microsoft Installer API:
+	// https://learn.microsoft.com/en-us/windows/win32/api/msi/nf-msi-msiinstallproductw
+	switch engine.command.Definition.Type {
+	case lbdeploy.CommandTypeMSIUninstallProductCode:
+		args = append([]string{"/x", string(appData.ID), "/quiet"}, args...)
+	default:
+		return fmt.Errorf("the \"%s\" command type is not recognized or is not suitable for app-based invocation", engine.command.Definition.Type)
+	}
+
+	// Find the msiexec executable.
+	execPath, err := exec.LookPath("msiexec.exe")
+	if err != nil {
+		return fmt.Errorf("failed to locate the Windows Installer executable: %w", err)
+	}
+
+	return engine.invoke(ctx, "", execPath, args)
+}
+
+func (engine *commandEngine) invokePath(ctx context.Context, execPath string) (err error) {
+	// Determine a working directory for the command.
 	execDir := filepath.Dir(execPath)
 	if execDir == "" {
 		return fmt.Errorf("a working directory could not be determined for the \"%s\" command in the \"%s\" package", engine.command.ID, engine.pkg.ID)
@@ -132,30 +169,32 @@ func (engine *commandEngine) invoke(ctx context.Context, execPath string) (err e
 	args := engine.command.Definition.Args
 
 	// Special handling for use of msiexec.
+	//
+	// TODO: Switch to the Microsoft Installer API:
+	// https://learn.microsoft.com/en-us/windows/win32/api/msi/nf-msi-msiinstallproductw
 	switch engine.command.Definition.Type {
 	case lbdeploy.CommandTypeExe, "":
+		return engine.invoke(ctx, execDir, execPath, args)
 	case lbdeploy.CommandTypeMSIInstall:
 		args = append([]string{"/i", execPath, "/quiet"}, args...)
-		execPath, err = exec.LookPath("msiexec.exe")
-		if err != nil {
-			return fmt.Errorf("failed to locate the Windows Installer executable: %w", err)
-		}
 	case lbdeploy.CommandTypeMSIUpdate:
 		args = append([]string{"/update", execPath, "/quiet"}, args...)
-		execPath, err = exec.LookPath("msiexec.exe")
-		if err != nil {
-			return fmt.Errorf("failed to locate the Windows Installer executable: %w", err)
-		}
 	case lbdeploy.CommandTypeMSIUninstall:
 		args = append([]string{"/x", execPath, "/quiet"}, args...)
-		execPath, err = exec.LookPath("msiexec.exe")
-		if err != nil {
-			return fmt.Errorf("failed to locate the Windows Installer executable: %w", err)
-		}
 	default:
 		return fmt.Errorf("an unknown command type was specified: %s", engine.command.Definition.Type)
 	}
 
+	// Find the msiexec executable.
+	execPath, err = exec.LookPath("msiexec.exe")
+	if err != nil {
+		return fmt.Errorf("failed to locate the Windows Installer executable: %w", err)
+	}
+
+	return engine.invoke(ctx, execDir, execPath, args)
+}
+
+func (engine *commandEngine) invoke(ctx context.Context, workingDir, execPath string, args []string) (err error) {
 	// Check for cancellation before starting the command.
 	if err := ctx.Err(); err != nil {
 		return err
@@ -165,7 +204,7 @@ func (engine *commandEngine) invoke(ctx context.Context, execPath string) (err e
 	cmd := exec.CommandContext(ctx, execPath, args...)
 
 	// Set the command's working directory.
-	cmd.Dir = execDir
+	cmd.Dir = workingDir
 
 	// Configure the command to wait up to one minute for the command to close
 	// out gracefully when its context is cancelled.
