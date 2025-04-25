@@ -7,7 +7,8 @@ import (
 
 // MergeReader multiplexes multiple readers into a single reader.
 type MergeReader struct {
-	ch <-chan dataChunk
+	ch     <-chan dataChunk
+	unread *unreadChunk
 }
 
 // New returns a new MergeReader for the given set of readers.
@@ -27,8 +28,29 @@ func New(readers ...io.Reader) MergeReader {
 	}()
 
 	return MergeReader{
-		ch: ch,
+		ch:     ch,
+		unread: &unreadChunk{},
 	}
+}
+
+type unreadChunk struct {
+	offset int
+	size   int
+	data   [chunkSize]byte
+}
+
+func (unread *unreadChunk) TryRead(p []byte) (n int) {
+	if unread.offset >= unread.size {
+		return 0
+	}
+	copied := copy(p, unread.data[unread.offset:unread.size])
+	unread.offset += copied
+	return copied
+}
+
+func (unread *unreadChunk) Write(incoming *dataChunk, offset int) {
+	unread.offset = 0
+	unread.size = copy(unread.data[:], incoming.data[offset:incoming.size])
 }
 
 const chunkSize = 4096
@@ -42,12 +64,18 @@ type dataChunk struct {
 type dataChannel chan dataChunk
 
 func (r MergeReader) Read(p []byte) (n int, err error) {
+	if n := r.unread.TryRead(p); n > 0 {
+		return n, nil
+	}
 	chunk, ok := <-r.ch
 	if !ok {
 		return 0, io.EOF
 	}
-	copy(p, chunk.data[:chunk.size])
-	return chunk.size, chunk.err
+	copied := copy(p, chunk.data[:chunk.size])
+	if copied < chunk.size {
+		r.unread.Write(&chunk, copied)
+	}
+	return copied, chunk.err
 }
 
 func copyToChannel(r io.Reader, ch chan<- dataChunk, done func()) {
