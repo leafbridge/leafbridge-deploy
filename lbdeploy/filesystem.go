@@ -222,8 +222,9 @@ type KnownFolderMap map[DirectoryResourceID]KnownFolder
 
 // KnownFolder is a folder with a known location.
 type KnownFolder struct {
-	id   DirectoryResourceID
-	guid *windows.KNOWNFOLDERID
+	id        DirectoryResourceID
+	guid      *windows.KNOWNFOLDERID
+	protected bool
 }
 
 // ID returns the LeafBridge directory ID of the known folder.
@@ -241,6 +242,12 @@ func (kf KnownFolder) IsZero() bool {
 	return kf.guid == nil
 }
 
+// Protected returns true if the known folder is protected against
+// modification.
+func (kf KnownFolder) Protected() bool {
+	return kf.protected
+}
+
 // Path retrieves the path to the known folder on the local system.
 func (kf KnownFolder) Path() (path string, err error) {
 	path, err = windows.KnownFolderPath(kf.guid, 0)
@@ -255,7 +262,11 @@ func GetKnownFolder(id DirectoryResourceID) (folder KnownFolder, ok bool) {
 }
 
 var knownFolders = KnownFolderMap{
-	"program-data":   KnownFolder{guid: windows.FOLDERID_ProgramData, id: "program-data"},
-	"start-menu":     KnownFolder{guid: windows.FOLDERID_CommonStartMenu, id: "start-menu"},
-	"public-desktop": KnownFolder{guid: windows.FOLDERID_PublicDesktop, id: "public-desktop"},
+	"common-start-menu": KnownFolder{guid: windows.FOLDERID_CommonStartMenu, id: "common-start-menu"},
+	"public-desktop":    KnownFolder{guid: windows.FOLDERID_PublicDesktop, id: "public-desktop"},
+	"program-data":      KnownFolder{guid: windows.FOLDERID_ProgramData, id: "program-data"},
+	"program-files":     KnownFolder{guid: windows.FOLDERID_ProgramFiles, id: "program-files"},
+	"program-files-x86": KnownFolder{guid: windows.FOLDERID_ProgramFilesX86, id: "program-files-x86"},
+	"program-files-x64": KnownFolder{guid: windows.FOLDERID_ProgramFilesX64, id: "program-files-x64"},
+	"system":            KnownFolder{guid: windows.FOLDERID_System, id: "system", protected: true},
 }
