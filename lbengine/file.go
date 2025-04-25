@@ -41,6 +41,11 @@ func (engine *fileEngine) CopyFile(ctx context.Context) error {
 		return fmt.Errorf("destination file: %w", err)
 	}
 
+	// Make sure that the destination file is not in protected location.
+	if destFileRef.Root.Protected() {
+		return fmt.Errorf("the destination file is located in the \"%s\" root, which is protected", destFileRef.Root.ID())
+	}
+
 	// Record the time that the file copy started.
 	started := time.Now()
 
@@ -154,6 +159,11 @@ func (engine *fileEngine) DeleteFile(ctx context.Context) error {
 	fileRef, err := engine.deployment.Resources.FileSystem.ResolveFile(fileID)
 	if err != nil {
 		return fmt.Errorf("file: %w", err)
+	}
+
+	// Make sure that the file is not in protected location.
+	if fileRef.Root.Protected() {
+		return fmt.Errorf("the file is located in the \"%s\" root, which is protected", fileRef.Root.ID())
 	}
 
 	// Record the time that the file deletion started.
