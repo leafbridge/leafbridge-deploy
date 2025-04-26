@@ -21,6 +21,7 @@ func (id DeploymentID) Validate() error {
 type Deployment struct {
 	ID         DeploymentID `json:"id,omitempty"`
 	Name       string       `json:"name,omitempty"`
+	Behavior   Behavior     `json:"behavior,omitzero"`
 	Apps       AppMap       `json:"apps,omitzero"`
 	Conditions ConditionMap `json:"conditions,omitzero"`
 	Commands   CommandMap   `json:"commands,omitzero"`

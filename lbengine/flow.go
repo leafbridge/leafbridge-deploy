@@ -119,6 +119,9 @@ func (engine flowEngine) Invoke(ctx context.Context) error {
 		defer group.Unlock()
 	}
 
+	// Prepare the behavior for this flow.
+	behavior := lbdeploy.OverlayBehavior(engine.deployment.Behavior, engine.flow.Definition.Behavior)
+
 	// Record this as a running flow as long as it is running.
 	engine.state.activeFlows.Add(engine.flow.ID)
 	defer engine.state.activeFlows.Remove(engine.flow.ID)
@@ -134,6 +137,7 @@ func (engine flowEngine) Invoke(ctx context.Context) error {
 
 	// Execute each action in the flow.
 	err := func() error {
+		var errs []error
 		for i, action := range engine.flow.Definition.Actions {
 			ae := actionEngine{
 				deployment: engine.deployment,
@@ -147,10 +151,13 @@ func (engine flowEngine) Invoke(ctx context.Context) error {
 				state:  engine.state,
 			}
 			if err := ae.Invoke(ctx); err != nil {
-				return err
+				if behavior.OnError != lbdeploy.OnErrorContinue {
+					return err
+				}
+				errs = append(errs, err)
 			}
 		}
-		return nil
+		return errors.Join(errs...)
 	}()
 
 	// Record the time that the flow stopped.

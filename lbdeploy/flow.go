@@ -10,5 +10,6 @@ type FlowID string
 type Flow struct {
 	Preconditions ConditionList `json:"preconditions,omitzero"`
 	Locks         []LockID      `json:"locks,omitzero"`
+	Behavior      Behavior      `json:"behavior,omitzero"`
 	Actions       []Action      `json:"actions,omitzero"`
 }
