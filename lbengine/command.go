@@ -46,7 +46,7 @@ func (engine *commandEngine) InvokeStandard(ctx context.Context) error {
 	fileID := lbdeploy.FileResourceID(engine.command.Definition.Executable)
 	fileRef, err := engine.deployment.Resources.FileSystem.ResolveFile(fileID)
 	if err != nil {
-		return fmt.Errorf("the \"%s\" command refers to an executable file \"%s\" that could not be resolved: %w", engine.command.ID, fileID, err)
+		return fmt.Errorf("%s refers to an executable file \"%s\" that could not be resolved: %w", engine.cmdDesc(), fileID, err)
 	}
 
 	// Open the directory above the executable file.
@@ -65,10 +65,10 @@ func (engine *commandEngine) InvokeStandard(ctx context.Context) error {
 		return errors.New("verification of the command executable failed: the executable file path is not a regular file")
 	}
 
-	// Prepare an absolute path for the command and its working directory.
+	// Prepare an absolute path for the command.
 	localized, err := filepath.Localize(fileRef.FilePath)
 	if err != nil {
-		return fmt.Errorf("an executable file path could not be prepared for the \"%s\" command: %w", engine.command.ID, err)
+		return fmt.Errorf("an executable file path could not be prepared for %s: %w", engine.cmdDesc(), err)
 	}
 	execPath := filepath.Join(fileDir.Path(), localized)
 
@@ -87,10 +87,10 @@ func (engine *commandEngine) InvokePackage(ctx context.Context, dir stagingfs.Pa
 		return errors.New("verification of the command executable failed: the executable file path is not a regular file")
 	}
 
-	// Prepare an absolute path for the command and its working directory.
+	// Prepare an absolute path for the command.
 	execPath, err := dir.FilePath(engine.pkg.Definition)
 	if err != nil {
-		return fmt.Errorf("an executable file path could not be prepared for the \"%s\" command in the \"%s\" package: %w", engine.command.ID, engine.pkg.ID, err)
+		return fmt.Errorf("an executable file path could not be prepared for %s: %w", engine.cmdDesc(), err)
 	}
 
 	return engine.invokePath(ctx, execPath)
@@ -102,7 +102,7 @@ func (engine *commandEngine) InvokeArchive(ctx context.Context, files tempfs.Ext
 	fileID := lbdeploy.PackageFileID(engine.command.Definition.Executable)
 	fileData, exists := engine.pkg.Definition.Files[fileID]
 	if !exists {
-		return fmt.Errorf("the \"%s\" command refers to an executable file \"%s\" that is not defined in the \"%s\" package", engine.command.ID, fileID, engine.pkg.ID)
+		return fmt.Errorf("%s refers to an executable file \"%s\" that is not defined in the \"%s\" package", engine.cmdDesc(), fileID, engine.pkg.ID)
 	}
 
 	// Verify that the executable file exists within the extracted file set.
@@ -114,10 +114,10 @@ func (engine *commandEngine) InvokeArchive(ctx context.Context, files tempfs.Ext
 		return errors.New("verification of the command executable failed: the executable file path is not a regular file")
 	}
 
-	// Prepare an absolute path for the command and its working directory.
+	// Prepare an absolute path for the command.
 	execPath, err := files.FilePath(fileData.Path)
 	if err != nil {
-		return fmt.Errorf("an executable file path could not be prepared for the \"%s\" command in the \"%s\" package: %w", engine.command.ID, engine.pkg.ID, err)
+		return fmt.Errorf("an executable file path could not be prepared for %s: %w", engine.cmdDesc(), err)
 	}
 
 	return engine.invokePath(ctx, execPath)
@@ -130,22 +130,22 @@ func (engine *commandEngine) InvokeApp(ctx context.Context) error {
 	switch engine.command.Definition.Type {
 	case lbdeploy.CommandTypeMSIUninstallProductCode:
 		if len(engine.command.Definition.Uninstalls) != 1 {
-			return fmt.Errorf("the \"%s\" command must provide a single application ID to be uninstalled", engine.command.ID)
+			return fmt.Errorf("%s must provide a single application ID to be uninstalled", engine.cmdDesc())
 		}
 		app = engine.command.Definition.Uninstalls[0]
 	default:
-		return fmt.Errorf("the \"%s\" command type is not recognized or is not suitable for app-based invocation", engine.command.Definition.Type)
+		return fmt.Errorf("%s uses a \"%s\" command type that is not recognized or is not suitable for app-based invocation", engine.cmdDesc(), engine.command.Definition.Type)
 	}
 
 	// Get information about the application from the deployment.
 	appData, exists := engine.deployment.Apps[app]
 	if !exists {
-		return fmt.Errorf("the \"%s\" command refers to an application \"%s\" that is not defined in the \"%s\" deployment", engine.command.ID, app, engine.deployment.ID)
+		return fmt.Errorf("%s refers to an application \"%s\" that is not defined in the \"%s\" deployment", engine.cmdDesc(), app, engine.deployment.ID)
 	}
 
 	// Make sure a product code is defined.
 	if appData.ProductCode == "" {
-		return fmt.Errorf("the \"%s\" command refers to an application \"%s\" that does not have a product code", engine.command.ID, app)
+		return fmt.Errorf("%s refers to an application \"%s\" that does not have a product code", engine.cmdDesc(), app)
 	}
 
 	// Prepare the command arguments.
@@ -159,7 +159,13 @@ func (engine *commandEngine) InvokeApp(ctx context.Context) error {
 	case lbdeploy.CommandTypeMSIUninstallProductCode:
 		args = append([]string{"/x", string(appData.ProductCode), "/quiet", "/norestart"}, args...)
 	default:
-		return fmt.Errorf("the \"%s\" command type is not recognized or is not suitable for app-based invocation", engine.command.Definition.Type)
+		return fmt.Errorf("%s uses a \"%s\" command type that is not recognized or is not suitable for app-based invocation", engine.cmdDesc(), engine.command.Definition.Type)
+	}
+
+	// If a working directory was specified, resolve it.
+	workingDir, err := engine.workingDirectory()
+	if err != nil {
+		return fmt.Errorf("a working directory could not be determined for %s: %w", engine.cmdDesc(), err)
 	}
 
 	// Find the msiexec executable.
@@ -168,14 +174,14 @@ func (engine *commandEngine) InvokeApp(ctx context.Context) error {
 		return fmt.Errorf("failed to locate the Windows Installer executable: %w", err)
 	}
 
-	return engine.invoke(ctx, "", execPath, args)
+	return engine.invoke(ctx, workingDir, execPath, args)
 }
 
 func (engine *commandEngine) invokePath(ctx context.Context, execPath string) (err error) {
 	// Determine a working directory for the command.
-	execDir := filepath.Dir(execPath)
-	if execDir == "" {
-		return fmt.Errorf("a working directory could not be determined for the \"%s\" command in the \"%s\" package", engine.command.ID, engine.pkg.ID)
+	workingDir, err := engine.workingDirectoryForExecutable(execPath)
+	if err != nil {
+		return fmt.Errorf("a working directory could not be determined for %s: %w", engine.cmdDesc(), err)
 	}
 
 	// Prepare the command arguments.
@@ -187,7 +193,7 @@ func (engine *commandEngine) invokePath(ctx context.Context, execPath string) (e
 	// https://learn.microsoft.com/en-us/windows/win32/api/msi/nf-msi-msiinstallproductw
 	switch engine.command.Definition.Type {
 	case lbdeploy.CommandTypeExe, "":
-		return engine.invoke(ctx, execDir, execPath, args)
+		return engine.invoke(ctx, workingDir, execPath, args)
 	case lbdeploy.CommandTypeMSIInstall:
 		args = append([]string{"/i", execPath, "/quiet", "/norestart"}, args...)
 	case lbdeploy.CommandTypeMSIUpdate:
@@ -204,7 +210,7 @@ func (engine *commandEngine) invokePath(ctx context.Context, execPath string) (e
 		return fmt.Errorf("failed to locate the Windows Installer executable: %w", err)
 	}
 
-	return engine.invoke(ctx, execDir, execPath, args)
+	return engine.invoke(ctx, workingDir, execPath, args)
 }
 
 func (engine *commandEngine) invoke(ctx context.Context, workingDir, execPath string, args []string) (err error) {
@@ -342,6 +348,59 @@ func (engine *commandEngine) invoke(ctx context.Context, workingDir, execPath st
 	// If the application summary indicates that an expected change to the
 	// installed set of applications didn't take effect, return the error.
 	return appSummary.Err()
+}
+
+// cmdDesc returns a string describing the command. It is used to build
+// error messages.
+func (engine *commandEngine) cmdDesc() string {
+	if engine.pkg.ID != "" {
+		return fmt.Sprintf("the \"%s\" command in the \"%s\" package", engine.command.ID, engine.pkg.ID)
+	}
+	return fmt.Sprintf("the \"%s\" command", engine.command.ID)
+}
+
+// workingDirectoryForExecutable returns an absolute path to the command's
+// working directory. If a working directory was not provided for the command,
+// it returns the directory containing the executable.
+//
+// If the working directory could not be resolved or does not exist, it
+// returns an error.
+func (engine *commandEngine) workingDirectoryForExecutable(execPath string) (path string, err error) {
+	path, err = engine.workingDirectory()
+	if err != nil || path != "" {
+		return path, err
+	}
+	path = filepath.Dir(execPath)
+	if path == "" {
+		return "", fmt.Errorf("a directory could not be determined for the executable's path: %s", execPath)
+	}
+	return path, nil
+}
+
+// workingDirectory returns an absolute path to the command's working
+// directory. If a working directory was not provided for the command, it
+// returns an empty string.
+//
+// If the working directory could not be resolved or does not exist, it
+// returns an error.
+func (engine *commandEngine) workingDirectory() (path string, err error) {
+	dirID := engine.command.Definition.WorkingDirectory
+	if dirID == "" {
+		return "", nil
+	}
+
+	dirRef, err := engine.deployment.Resources.FileSystem.ResolveDirectory(dirID)
+	if err != nil {
+		return "", err
+	}
+
+	dir, err := localfs.OpenDir(dirRef)
+	if err != nil {
+		return "", err
+	}
+	defer dir.Close()
+
+	return dir.Path(), nil
 }
 
 func (engine *commandEngine) buildResult(cmdError error) (result lbdeploy.CommandResult, err error) {

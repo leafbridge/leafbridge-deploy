@@ -53,6 +53,11 @@ type Command struct {
 	// Type is the type of command to be run.
 	Type CommandType `json:"type,omitempty"`
 
+	// WorkingDirectory specifies a working directory for a command. If no
+	// working directory is specified, the directory containing the executable
+	// will be used.
+	WorkingDirectory DirectoryResourceID `json:"working-directory,omitempty"`
+
 	// Executable identifies an executable file to be run.
 	//
 	// For commands applied to archive packages, it identifies the executable
