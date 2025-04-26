@@ -157,7 +157,7 @@ func (engine *commandEngine) InvokeApp(ctx context.Context) error {
 	// https://learn.microsoft.com/en-us/windows/win32/api/msi/nf-msi-msiinstallproductw
 	switch engine.command.Definition.Type {
 	case lbdeploy.CommandTypeMSIUninstallProductCode:
-		args = append([]string{"/x", string(appData.ProductCode), "/quiet"}, args...)
+		args = append([]string{"/x", string(appData.ProductCode), "/quiet", "/norestart"}, args...)
 	default:
 		return fmt.Errorf("the \"%s\" command type is not recognized or is not suitable for app-based invocation", engine.command.Definition.Type)
 	}
@@ -189,11 +189,11 @@ func (engine *commandEngine) invokePath(ctx context.Context, execPath string) (e
 	case lbdeploy.CommandTypeExe, "":
 		return engine.invoke(ctx, execDir, execPath, args)
 	case lbdeploy.CommandTypeMSIInstall:
-		args = append([]string{"/i", execPath, "/quiet"}, args...)
+		args = append([]string{"/i", execPath, "/quiet", "/norestart"}, args...)
 	case lbdeploy.CommandTypeMSIUpdate:
-		args = append([]string{"/update", execPath, "/quiet"}, args...)
+		args = append([]string{"/update", execPath, "/quiet", "/norestart"}, args...)
 	case lbdeploy.CommandTypeMSIUninstall:
-		args = append([]string{"/x", execPath, "/quiet"}, args...)
+		args = append([]string{"/x", execPath, "/quiet", "/norestart"}, args...)
 	default:
 		return fmt.Errorf("an unknown command type was specified: %s", engine.command.Definition.Type)
 	}
