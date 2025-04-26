@@ -17,7 +17,8 @@ import (
 // ShowCmd shows information that is relevant to a LeafBridge deployment.
 type ShowCmd struct {
 	Config     ShowConfigCmd     `kong:"cmd,help='Shows configuration loaded from a deployment configuration file.'"`
-	Conditions ShowConditionsCmd `kong:"cmd,help='Shews the current conditions for a deployment.'"`
+	Apps       ShowAppsCmd       `kong:"cmd,help='Shows the installation status of applications for a deployment.'"`
+	Conditions ShowConditionsCmd `kong:"cmd,help='Shows the current conditions for a deployment.'"`
 	Resources  ShowResourcesCmd  `kong:"cmd,help='Shows the relevant resources for a deployment.'"`
 }
 
@@ -43,6 +44,91 @@ func (cmd ShowConfigCmd) Run(ctx context.Context) error {
 	fmt.Println(string(out))
 
 	return nil
+}
+
+// ShowAppsCmd shows the current status of applications for a LeafBridge
+// deployment.
+type ShowAppsCmd struct {
+	ConfigFile string `kong:"required,name='config-file',help='Path to a deployment file describing the deployment.'"`
+	Installed  bool   `kong:"optional,name='installed',help='Show apps that are installed.'"`
+	Missing    bool   `kong:"optional,name='missing',help='Show apps that are missing.'"`
+}
+
+// Run executes the LeafBridge show apps command.
+func (cmd ShowAppsCmd) Run(ctx context.Context) error {
+	// Read the deployment file.
+	dep, err := loadDeployment(cmd.ConfigFile)
+	if err != nil {
+		return err
+	}
+
+	// Validate the dpeloyment.
+	if err := dep.Validate(); err != nil {
+		fmt.Printf("The deployment contains invalid configuration: %s\n", err)
+		os.Exit(1)
+	}
+
+	switch {
+	case !cmd.showAll() && cmd.Installed:
+		fmt.Printf("---- %s (%s): Installed Applications ----\n", dep.Name, cmd.ConfigFile)
+	case !cmd.showAll() && cmd.Missing:
+		fmt.Printf("---- %s (%s): Missing Applications ----\n", dep.Name, cmd.ConfigFile)
+	default:
+		fmt.Printf("---- %s (%s): Applications ----\n", dep.Name, cmd.ConfigFile)
+	}
+
+	// Prepare an application engine.
+	ae := lbengine.NewAppEngine(dep)
+
+	// Sort the app IDs for a deterministic order.
+	ids := slices.Collect(maps.Keys(dep.Apps))
+	slices.Sort(ids)
+
+	// Print the status of each condition.
+	for _, id := range ids {
+		installed, installedErr := ae.IsInstalled(id)
+		if installedErr == nil {
+			if installed && !cmd.Installed && !cmd.showAll() {
+				continue
+			}
+			if !installed && !cmd.Missing && !cmd.showAll() {
+				continue
+			}
+		}
+
+		fmt.Printf("    %s\n", id)
+		app := dep.Apps[id]
+		if app.Name != "" {
+			fmt.Printf("      Name:         %s\n", app.Name)
+		}
+		if app.Scope != "" {
+			fmt.Printf("      Scope:        %s\n", app.Scope)
+		}
+		if app.Architecture != "" {
+			fmt.Printf("      Architecture: %s\n", app.Architecture)
+		}
+		if app.ProductCode != "" {
+			fmt.Printf("      Product Code: %s\n", app.ProductCode)
+		}
+		if installedErr != nil {
+			fmt.Printf("      Installed:    %s\n", installedErr)
+		} else {
+			fmt.Printf("      Installed:    %t\n", installed)
+		}
+	}
+
+	return nil
+}
+
+// showAll returns true if all applications should be shown.
+func (cmd ShowAppsCmd) showAll() bool {
+	if cmd.Installed && cmd.Missing {
+		return true
+	}
+	if !cmd.Installed && !cmd.Missing {
+		return true
+	}
+	return false
 }
 
 // ShowConditionsCmd shows the current status of conditions for a
