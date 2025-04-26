@@ -25,7 +25,7 @@ func (e ActionStarted) Component() string {
 
 // Level returns the level of the event.
 func (e ActionStarted) Level() slog.Level {
-	return slog.LevelInfo
+	return slog.LevelDebug
 }
 
 // Message returns a description of the event.
@@ -77,6 +77,9 @@ func (e ActionStopped) Component() string {
 func (e ActionStopped) Level() slog.Level {
 	if e.Err != nil {
 		return slog.LevelError
+	}
+	if e.Duration() < time.Second*5 {
+		return slog.LevelDebug
 	}
 	return slog.LevelInfo
 }
