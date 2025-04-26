@@ -219,14 +219,8 @@ func (engine *actionEngine) invokeCommand(ctx context.Context) error {
 
 	// Special handling for commands that apply to an application's product
 	// code, and not to a provided executable or installer file.
-	switch command.Definition.Type {
-	case lbdeploy.CommandTypeMSIUninstallProductCode:
-		for _, app := range appEvaluation.ToUninstall {
-			if err := ce.InvokeApp(ctx, app); err != nil {
-				return err
-			}
-		}
-		return nil
+	if command.Definition.Type.IsAppBased() {
+		return ce.InvokeApp(ctx)
 	}
 
 	// Invoke the command.

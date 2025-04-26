@@ -275,7 +275,7 @@ func (engine *packageEngine) invokeArchiveCommand(ctx context.Context, command c
 	return ce.InvokeArchive(ctx, extractedFiles)
 }
 
-// invokeAppCommand runs a command on an applicatoin.
+// invokeAppCommand runs a command on an application.
 func (engine *packageEngine) invokeAppCommand(ctx context.Context, command commandData, apps lbdeploy.AppEvaluation) error {
 	// Prepare a command engine.
 	ce := commandEngine{
@@ -290,19 +290,8 @@ func (engine *packageEngine) invokeAppCommand(ctx context.Context, command comma
 		state:      engine.state,
 	}
 
-	// Invoke the command for each application.
-	switch command.Definition.Type {
-	case lbdeploy.CommandTypeMSIUninstallProductCode:
-		for _, app := range apps.ToUninstall {
-			if err := ce.InvokeApp(ctx, app); err != nil {
-				return err
-			}
-		}
-	default:
-		return fmt.Errorf("the \"%s\" command type is not recognized or is not suitable for app-based invocation", command.Definition.Type)
-	}
-
-	return nil
+	// Invoke the command.
+	return ce.InvokeApp(ctx)
 }
 
 func (engine *packageEngine) openPackageDir() (stagingfs.PackageDir, error) {

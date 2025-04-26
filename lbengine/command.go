@@ -16,6 +16,7 @@ import (
 	"github.com/leafbridge/leafbridge-deploy/lbdeployevent"
 	"github.com/leafbridge/leafbridge-deploy/lbevent"
 	"github.com/leafbridge/leafbridge-deploy/localfs"
+	"github.com/leafbridge/leafbridge-deploy/msi/msiresult"
 	"github.com/leafbridge/leafbridge-deploy/stagingfs"
 	"github.com/leafbridge/leafbridge-deploy/tempfs"
 )
@@ -123,7 +124,19 @@ func (engine *commandEngine) InvokeArchive(ctx context.Context, files tempfs.Ext
 }
 
 // InvokeApp runs the command against an application's product code.
-func (engine *commandEngine) InvokeApp(ctx context.Context, app lbdeploy.AppID) error {
+func (engine *commandEngine) InvokeApp(ctx context.Context) error {
+	// Determine what application we will be operting on.
+	var app lbdeploy.AppID
+	switch engine.command.Definition.Type {
+	case lbdeploy.CommandTypeMSIUninstallProductCode:
+		if len(engine.command.Definition.Uninstalls) != 1 {
+			return fmt.Errorf("the \"%s\" command must provide a single application ID to be uninstalled", engine.command.ID)
+		}
+		app = engine.command.Definition.Uninstalls[0]
+	default:
+		return fmt.Errorf("the \"%s\" command type is not recognized or is not suitable for app-based invocation", engine.command.Definition.Type)
+	}
+
 	// Get information about the application from the deployment.
 	appData, exists := engine.deployment.Apps[app]
 	if !exists {
@@ -264,6 +277,19 @@ func (engine *commandEngine) invoke(ctx context.Context, workingDir, execPath st
 	// Record the time that the command stopped.
 	stopped := time.Now()
 
+	// Analyze the exit code of the command.
+	result, err := engine.buildResult(err)
+
+	// Special handling for some exit codes returned by msiexec.
+	switch engine.command.Definition.Type {
+	case lbdeploy.CommandTypeMSIUninstall, lbdeploy.CommandTypeMSIUninstallProductCode:
+		if exitCode, ok := err.(msiresult.ExitCode); ok {
+			if exitCode == msiresult.UnknownProduct {
+				err = nil // Already uninstalled
+			}
+		}
+	}
+
 	// Evaluate the effectiveness of any expected application changes.
 	ae := NewAppEngine(engine.deployment)
 	appSummary, appSummaryErr := ae.SummarizeAppChanges(engine.apps)
@@ -283,6 +309,7 @@ func (engine *commandEngine) invoke(ctx context.Context, workingDir, execPath st
 		Package:     engine.pkg.ID,
 		Command:     engine.command.ID,
 		CommandLine: cmd.String(),
+		Result:      result,
 		Output:      output.String(),
 		AppsBefore:  engine.apps,
 		AppsAfter:   appSummary,
@@ -315,4 +342,64 @@ func (engine *commandEngine) invoke(ctx context.Context, workingDir, execPath st
 	// If the application summary indicates that an expected change to the
 	// installed set of applications didn't take effect, return the error.
 	return appSummary.Err()
+}
+
+func (engine *commandEngine) buildResult(cmdError error) (result lbdeploy.CommandResult, err error) {
+	// If the command returned an error, examine it.
+	if cmdError != nil {
+		// Assume that any error returned by cmd.Wait() is a real error,
+		// unless we later succeed in looking up an exit code that we're
+		// familiar with and proving that it's okay.
+		err = cmdError
+
+		// If we can't interpret the error as an exit error, then something
+		// strange happened when trying to run the command.
+		var exitErr *exec.ExitError
+		if !errors.As(cmdError, &exitErr) {
+			return
+		}
+
+		// If the process state is missing, then the command didn't run, and there
+		// is no exit code.
+		if exitErr.ProcessState == nil {
+			return
+		}
+
+		// Make sure the process has exited.
+		if !exitErr.ProcessState.Exited() {
+			return
+		}
+
+		// Record the exit code returned by the command.
+		result.ExitCode = lbdeploy.ExitCode(exitErr.ExitCode())
+	} else {
+		// The command returned an exit code of zero.
+		result.ExitCode = 0
+	}
+
+	// Attempt to look up the error code information in the command.
+	if info, found := engine.command.Definition.ExitCodes[result.ExitCode]; found {
+		result.Info = info
+		if info.OK {
+			err = nil
+		}
+		return
+	}
+
+	// If this is an msiexec command, look for an exit code that is well
+	// known.
+	if engine.command.Definition.Type.IsMSI() {
+		code := msiresult.ExitCode(result.ExitCode)
+		if info, found := msiresult.InfoMap[code]; found {
+			result.Info = info
+			if info.OK {
+				err = nil
+			} else {
+				err = code // Return an msiexec exit code.
+			}
+			return
+		}
+	}
+
+	return
 }

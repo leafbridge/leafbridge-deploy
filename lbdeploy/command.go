@@ -18,6 +18,16 @@ func (t CommandType) IsAppBased() bool {
 	return t == CommandTypeMSIUninstallProductCode
 }
 
+// IsMSI returns true if the command invokes msiexec.
+func (t CommandType) IsMSI() bool {
+	switch t {
+	case CommandTypeMSIInstall, CommandTypeMSIUpdate, CommandTypeMSIUninstall, CommandTypeMSIUninstallProductCode:
+		return true
+	default:
+		return false
+	}
+}
+
 // CommandMap defines a set of commands that can be issued, mapped by their
 // identifiers.
 type CommandMap map[CommandID]Command
@@ -57,4 +67,26 @@ type Command struct {
 
 	// Args is the set of arguments to be passed to the command.
 	Args []string `json:"args,omitzero"`
+
+	// ExitCodes provide a map of known exit codes for the command.
+	ExitCodes ExitCodeMap `json:"exit-codes,omitzero"`
+}
+
+// ExitCodeMap defines a set of expected exit codes.
+type ExitCodeMap map[ExitCode]ExitCodeInfo
+
+// ExitCode is an exit code returned from a command.
+type ExitCode int
+
+// ExitCodeInfo stores information about an exit code.
+type ExitCodeInfo struct {
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	OK          bool   `json:"ok,omitempty"`
+}
+
+// CommandResult stores information about an exit code returned by a command.
+type CommandResult struct {
+	ExitCode ExitCode
+	Info     ExitCodeInfo
 }

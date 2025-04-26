@@ -171,6 +171,7 @@ type CommandStopped struct {
 	Package     lbdeploy.PackageID
 	Command     lbdeploy.CommandID
 	CommandLine string
+	Result      lbdeploy.CommandResult
 	Output      string
 	AppsBefore  lbdeploy.AppEvaluation
 	AppsAfter   lbdeploy.AppSummary
