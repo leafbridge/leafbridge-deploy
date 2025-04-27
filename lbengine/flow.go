@@ -27,6 +27,11 @@ type flowEngine struct {
 }
 
 func (engine flowEngine) Invoke(ctx context.Context) error {
+	// Check for context cancellation.
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	// Check for a flow cycle and stop if one is detected.
 	if engine.state.activeFlows.Contains(engine.flow.ID) {
 		// Record the failure to start the flow.
@@ -139,6 +144,13 @@ func (engine flowEngine) Invoke(ctx context.Context) error {
 	err := func() error {
 		var errs []error
 		for i, action := range engine.flow.Definition.Actions {
+			// Check for context cancellation.
+			if err := ctx.Err(); err != nil {
+				errs = append(errs, err)
+				break
+			}
+
+			// Create an action engine.
 			ae := actionEngine{
 				deployment: engine.deployment,
 				flow:       engine.flow,
@@ -150,11 +162,16 @@ func (engine flowEngine) Invoke(ctx context.Context) error {
 				force:  engine.force,
 				state:  engine.state,
 			}
+
+			// Invoke the action.
 			if err := ae.Invoke(ctx); err != nil {
-				if behavior.OnError != lbdeploy.OnErrorContinue {
-					return err
-				}
 				errs = append(errs, err)
+				if behavior.OnError != lbdeploy.OnErrorContinue {
+					break
+				}
+				if ctx.Err() == err {
+					break // Always stop when the context is cancelled.
+				}
 			}
 		}
 		return errors.Join(errs...)
