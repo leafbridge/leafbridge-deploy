@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gentlemanautomaton/structformat"
@@ -86,14 +87,16 @@ func (e CommandSkipped) Attrs() []slog.Attr {
 
 // CommandStarted is an event that occurs when a command has started.
 type CommandStarted struct {
-	Deployment  lbdeploy.DeploymentID
-	Flow        lbdeploy.FlowID
-	ActionIndex int
-	ActionType  lbdeploy.ActionType
-	Package     lbdeploy.PackageID
-	Command     lbdeploy.CommandID
-	CommandLine string
-	Apps        lbdeploy.AppEvaluation
+	Deployment           lbdeploy.DeploymentID
+	Flow                 lbdeploy.FlowID
+	ActionIndex          int
+	ActionType           lbdeploy.ActionType
+	Package              lbdeploy.PackageID
+	Command              lbdeploy.CommandID
+	CommandLine          string
+	WorkingDirectory     lbdeploy.DirectoryResourceID
+	WorkingDirectoryPath string
+	Apps                 lbdeploy.AppEvaluation
 }
 
 // Component identifies the component that generated the event.
@@ -138,7 +141,14 @@ func (e CommandStarted) Message() string {
 // multiple lines of text. An empty string is returned when no details
 // are available.
 func (e CommandStarted) Details() string {
-	return ""
+	switch {
+	case e.WorkingDirectoryPath != "":
+		return fmt.Sprintf("Working Directory: %s", e.WorkingDirectoryPath)
+	case e.WorkingDirectory != "":
+		return fmt.Sprintf("Working Directory: %s", e.WorkingDirectory)
+	default:
+		return ""
+	}
 }
 
 // Attrs returns a set of structured log attributes for the event.
@@ -152,6 +162,9 @@ func (e CommandStarted) Attrs() []slog.Attr {
 		attrs = append(attrs, slog.String("package", string(e.Package)))
 	}
 	attrs = append(attrs, slog.Group("command", "id", e.Command, "invocation", e.CommandLine))
+	if e.WorkingDirectory != "" || e.WorkingDirectoryPath != "" {
+		attrs = append(attrs, slog.Group("working-directory", "id", e.WorkingDirectory, "path", e.WorkingDirectoryPath))
+	}
 	if !e.Apps.IsZero() {
 		attrs = append(attrs, slog.Group("affected-apps",
 			"already-installed", e.Apps.AlreadyInstalled,
@@ -164,20 +177,22 @@ func (e CommandStarted) Attrs() []slog.Attr {
 
 // CommandStopped is an event that occurs when a command has stopped.
 type CommandStopped struct {
-	Deployment  lbdeploy.DeploymentID
-	Flow        lbdeploy.FlowID
-	ActionIndex int
-	ActionType  lbdeploy.ActionType
-	Package     lbdeploy.PackageID
-	Command     lbdeploy.CommandID
-	CommandLine string
-	Result      lbdeploy.CommandResult
-	Output      string
-	AppsBefore  lbdeploy.AppEvaluation
-	AppsAfter   lbdeploy.AppSummary
-	Started     time.Time
-	Stopped     time.Time
-	Err         error
+	Deployment           lbdeploy.DeploymentID
+	Flow                 lbdeploy.FlowID
+	ActionIndex          int
+	ActionType           lbdeploy.ActionType
+	Package              lbdeploy.PackageID
+	Command              lbdeploy.CommandID
+	CommandLine          string
+	Result               lbdeploy.CommandResult
+	Output               string
+	WorkingDirectory     lbdeploy.DirectoryResourceID
+	WorkingDirectoryPath string
+	AppsBefore           lbdeploy.AppEvaluation
+	AppsAfter            lbdeploy.AppSummary
+	Started              time.Time
+	Stopped              time.Time
+	Err                  error
 }
 
 // Component identifies the component that generated the event.
@@ -222,11 +237,31 @@ func (e CommandStopped) Message() string {
 // multiple lines of text. An empty string is returned when no details
 // are available.
 func (e CommandStopped) Details() string {
-	if e.Output == "" {
-		return e.CommandLine
+	var out strings.Builder
+
+	switch {
+	case e.WorkingDirectoryPath != "":
+		out.WriteString(fmt.Sprintf("Working Directory: %s", e.WorkingDirectoryPath))
+	case e.WorkingDirectory != "":
+		out.WriteString(fmt.Sprintf("Working Directory: %s", e.WorkingDirectory))
+	default:
 	}
 
-	return fmt.Sprintf("%s\n%s", e.CommandLine, e.Output)
+	if e.CommandLine != "" {
+		if out.Len() > 0 {
+			out.WriteString("\n\n")
+		}
+		out.WriteString(e.CommandLine)
+	}
+
+	if e.Output != "" {
+		if out.Len() > 0 {
+			out.WriteString("\n\n")
+		}
+		out.WriteString(e.Output)
+	}
+
+	return out.String()
 }
 
 // Attrs returns a set of structured log attributes for the event.
@@ -244,6 +279,9 @@ func (e CommandStopped) Attrs() []slog.Attr {
 		slog.Time("started", e.Started),
 		slog.Time("stopped", e.Stopped),
 	)
+	if e.WorkingDirectory != "" || e.WorkingDirectoryPath != "" {
+		attrs = append(attrs, slog.Group("working-directory", "id", e.WorkingDirectory, "path", e.WorkingDirectoryPath))
+	}
 	if !e.AppsBefore.IsZero() {
 		attrs = append(attrs, slog.Group("affected-apps-before",
 			"already-installed", e.AppsBefore.AlreadyInstalled,

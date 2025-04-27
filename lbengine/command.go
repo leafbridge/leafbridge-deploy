@@ -244,14 +244,16 @@ func (engine *commandEngine) invoke(ctx context.Context, workingDir, execPath st
 
 	// Record the start of the command.
 	engine.events.Record(lbdeployevent.CommandStarted{
-		Deployment:  engine.deployment.ID,
-		Flow:        engine.flow.ID,
-		ActionIndex: engine.action.Index,
-		ActionType:  engine.action.Definition.Type,
-		Package:     engine.pkg.ID,
-		Command:     engine.command.ID,
-		CommandLine: cmd.String(),
-		Apps:        engine.apps,
+		Deployment:           engine.deployment.ID,
+		Flow:                 engine.flow.ID,
+		ActionIndex:          engine.action.Index,
+		ActionType:           engine.action.Definition.Type,
+		Package:              engine.pkg.ID,
+		Command:              engine.command.ID,
+		CommandLine:          cmd.String(),
+		WorkingDirectory:     engine.command.Definition.WorkingDirectory,
+		WorkingDirectoryPath: workingDir,
+		Apps:                 engine.apps,
 	})
 
 	// Prepare a buffer to hold the combined command output.
@@ -308,20 +310,22 @@ func (engine *commandEngine) invoke(ctx context.Context, workingDir, execPath st
 
 	// Record the end of the command.
 	engine.events.Record(lbdeployevent.CommandStopped{
-		Deployment:  engine.deployment.ID,
-		Flow:        engine.flow.ID,
-		ActionIndex: engine.action.Index,
-		ActionType:  engine.action.Definition.Type,
-		Package:     engine.pkg.ID,
-		Command:     engine.command.ID,
-		CommandLine: cmd.String(),
-		Result:      result,
-		Output:      output.String(),
-		AppsBefore:  engine.apps,
-		AppsAfter:   appSummary,
-		Started:     started,
-		Stopped:     stopped,
-		Err:         err,
+		Deployment:           engine.deployment.ID,
+		Flow:                 engine.flow.ID,
+		ActionIndex:          engine.action.Index,
+		ActionType:           engine.action.Definition.Type,
+		Package:              engine.pkg.ID,
+		Command:              engine.command.ID,
+		CommandLine:          cmd.String(),
+		Result:               result,
+		Output:               output.String(),
+		WorkingDirectory:     engine.command.Definition.WorkingDirectory,
+		WorkingDirectoryPath: workingDir,
+		AppsBefore:           engine.apps,
+		AppsAfter:            appSummary,
+		Started:              started,
+		Stopped:              stopped,
+		Err:                  err,
 	})
 
 	// Wait 5 seconds to let the file system and file locks quiesce before
