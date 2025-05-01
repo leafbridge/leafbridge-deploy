@@ -24,6 +24,11 @@ func NewBasicHandler(w io.Writer, min slog.Level) BasicHandler {
 	}
 }
 
+// Name returns a name for the handler.
+func (h BasicHandler) Name() string {
+	return "basic"
+}
+
 // Handle processes the given event record.
 func (h BasicHandler) Handle(r Record) error {
 	if r.Level() < h.min {

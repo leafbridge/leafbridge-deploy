@@ -41,18 +41,38 @@ func NewWindowsHandler() (WindowsHandler, error) {
 	return WindowsHandler{elog: elog}, nil
 }
 
+// Name returns a name for the handler.
+func (h WindowsHandler) Name() string {
+	return "windows-application-log"
+}
+
 // Handle processes the given event record.
-func (h WindowsHandler) Handle(r Record) error {
+func (h WindowsHandler) Handle(r Record) (err error) {
+	// Log the event according to the event level.
 	switch level := r.Level(); {
 	case level >= slog.LevelError:
-		return h.elog.Error(300, eventMessageWithDetails(r))
+		err = h.elog.Error(300, eventMessageWithDetails(r))
 	case level >= slog.LevelWarn:
-		return h.elog.Warning(200, eventMessageWithDetails(r))
+		err = h.elog.Warning(200, eventMessageWithDetails(r))
 	case level >= slog.LevelInfo:
-		return h.elog.Info(100, eventMessageWithDetails(r))
+		err = h.elog.Info(100, eventMessageWithDetails(r))
 	default:
 		return nil // Drop debug messages.
 	}
+
+	// If we failed to log the event, try again without the message details.
+	if err != nil {
+		switch level := r.Level(); {
+		case level >= slog.LevelError:
+			h.elog.Error(300, r.Message())
+		case level >= slog.LevelWarn:
+			h.elog.Warning(200, r.Message())
+		case level >= slog.LevelInfo:
+			h.elog.Info(100, r.Message())
+		}
+	}
+
+	return err
 }
 
 // Close releases any resources consumed by the Windows event handler.

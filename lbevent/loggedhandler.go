@@ -11,6 +11,11 @@ type LoggedHandler struct {
 	Handler slog.Handler
 }
 
+// Name returns a name for the handler.
+func (h LoggedHandler) Name() string {
+	return "structured-log"
+}
+
 // Handle processes the given event record.
 func (lh LoggedHandler) Handle(r Record) {
 	h := lh.Handler

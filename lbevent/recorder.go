@@ -14,10 +14,10 @@ type Recorder struct {
 }
 
 // Record records the given event and passes it to the recorder's handler.
-func (rec Recorder) Record(event Interface) {
+func (rec Recorder) Record(event Interface) error {
 	// If no handler has been provided, drop the event.
 	if rec.Handler == nil {
-		return
+		return nil
 	}
 
 	// Record the current time.
@@ -36,6 +36,20 @@ func (rec Recorder) Record(event Interface) {
 	// Prepare an event record.
 	record := NewRecord(at, pc, event)
 
-	// Provide the event record to the event handler.
-	rec.Handler.Handle(record)
+	// Send the event record to the event handler.
+	err := rec.Handler.Handle(record)
+
+	// If an error was encountered, make sure it's wrapped properly.
+	err = WrapHandlerError(rec.Handler, record, err)
+
+	// If an error was encountered while recording the event, try to record
+	// the error itself as an event.
+	if err != nil {
+		if event, ok := err.(Interface); ok {
+			at := time.Now()
+			rec.Handler.Handle(NewRecord(at, pc, event))
+		}
+	}
+
+	return err
 }
