@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/leafbridge/leafbridge-deploy/bytesconv"
 	"github.com/leafbridge/leafbridge-deploy/internal/mergereader"
 	"github.com/leafbridge/leafbridge-deploy/lbdeploy"
 	"github.com/leafbridge/leafbridge-deploy/lbdeployevent"
@@ -318,7 +319,7 @@ func (engine *commandEngine) invoke(ctx context.Context, workingDir, execPath st
 		Command:              engine.command.ID,
 		CommandLine:          cmd.String(),
 		Result:               result,
-		Output:               output.String(),
+		Output:               bytesconv.DecodeString(output.Bytes()),
 		WorkingDirectory:     engine.command.Definition.WorkingDirectory,
 		WorkingDirectoryPath: workingDir,
 		AppsBefore:           engine.apps,
