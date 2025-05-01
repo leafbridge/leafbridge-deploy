@@ -229,6 +229,9 @@ func (e CommandStopped) Message() string {
 		builder.WriteStandard(fmt.Sprintf("Completed command"))
 	}
 	builder.WriteNote(e.Duration().Round(time.Millisecond * 10).String())
+	if e.Result.ExitCode != 0 {
+		builder.WriteNote(e.Result.String())
+	}
 
 	return builder.String()
 }

@@ -1,5 +1,12 @@
 package lbdeploy
 
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/gentlemanautomaton/structformat"
+)
+
 // CommandType identifies the type of a command.
 type CommandType string
 
@@ -94,4 +101,22 @@ type ExitCodeInfo struct {
 type CommandResult struct {
 	ExitCode ExitCode
 	Info     ExitCodeInfo
+}
+
+// String returns a string representation of the command result.
+func (r CommandResult) String() string {
+	var builder structformat.Builder
+	builder.WritePrimary("exit code")
+	if r.Info.OK {
+		builder.WritePrimary(fmt.Sprintf("%d [OK]", r.ExitCode))
+	} else {
+		builder.WritePrimary(strconv.Itoa(int(r.ExitCode)))
+	}
+	if r.Info.Name != "" {
+		builder.WritePrimary(r.Info.Name)
+	}
+	if r.Info.Description != "" {
+		builder.WriteStandard(r.Info.Description)
+	}
+	return builder.String()
 }
