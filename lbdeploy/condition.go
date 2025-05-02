@@ -43,7 +43,7 @@ const (
 type Condition struct {
 	Label     string        `json:"label,omitempty"`
 	Type      ConditionType `json:"type,omitempty"`
-	Value     string        `json:"value,omitempty"`
+	Subject   string        `json:"subject,omitempty"`
 	Negated   bool          `json:"negated,omitempty"`
 	Any       []Condition   `json:"any,omitzero"`
 	All       []Condition   `json:"all,omitzero"`

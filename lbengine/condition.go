@@ -83,9 +83,9 @@ func (engine ConditionEngine) evaluate(condition lbdeploy.Condition) (bool, erro
 		// Evaluate individual conditions.
 		switch condition.Type {
 		case lbdeploy.ConditionProcessIsRunning:
-			process, found := engine.deployment.Resources.Processes[lbdeploy.ProcessResourceID(condition.Value)]
+			process, found := engine.deployment.Resources.Processes[lbdeploy.ProcessResourceID(condition.Subject)]
 			if !found {
-				return false, conditionSelfError(condition, fmt.Errorf("the \"%s\" process is not defined in the deployment", condition.Value))
+				return false, conditionSelfError(condition, fmt.Errorf("the \"%s\" process is not defined in the deployment", condition.Subject))
 			}
 			running, err := NumberOfRunningProcesses(process.Match)
 			if err != nil {
@@ -93,9 +93,9 @@ func (engine ConditionEngine) evaluate(condition lbdeploy.Condition) (bool, erro
 			}
 			return running > 0, nil
 		case lbdeploy.ConditionMutexExists:
-			mutex, found := engine.deployment.Resources.Mutexes[lbdeploy.MutexID(condition.Value)]
+			mutex, found := engine.deployment.Resources.Mutexes[lbdeploy.MutexID(condition.Subject)]
 			if !found {
-				return false, conditionSelfError(condition, fmt.Errorf("the \"%s\" mutex is not defined in the deployment", condition.Value))
+				return false, conditionSelfError(condition, fmt.Errorf("the \"%s\" mutex is not defined in the deployment", condition.Subject))
 			}
 			name, err := mutex.ObjectName()
 			if err != nil {
@@ -107,7 +107,7 @@ func (engine ConditionEngine) evaluate(condition lbdeploy.Condition) (bool, erro
 			}
 			return exists, nil
 		case lbdeploy.ConditionRegistryKeyExists:
-			ref, err := engine.deployment.Resources.Registry.ResolveKey(lbdeploy.RegistryKeyResourceID(condition.Value))
+			ref, err := engine.deployment.Resources.Registry.ResolveKey(lbdeploy.RegistryKeyResourceID(condition.Subject))
 			if err != nil {
 				return false, conditionSelfError(condition, err)
 			}
@@ -121,7 +121,7 @@ func (engine ConditionEngine) evaluate(condition lbdeploy.Condition) (bool, erro
 			defer key.Close()
 			return true, nil
 		case lbdeploy.ConditionRegistryValueExists:
-			ref, err := engine.deployment.Resources.Registry.ResolveValue(lbdeploy.RegistryValueResourceID(condition.Value))
+			ref, err := engine.deployment.Resources.Registry.ResolveValue(lbdeploy.RegistryValueResourceID(condition.Subject))
 			if err != nil {
 				return false, conditionSelfError(condition, err)
 			}
@@ -135,7 +135,7 @@ func (engine ConditionEngine) evaluate(condition lbdeploy.Condition) (bool, erro
 			defer key.Close()
 			return key.HasValue(ref.ValueName)
 		case lbdeploy.ConditionDirectoryExists:
-			ref, err := engine.deployment.Resources.FileSystem.ResolveDirectory(lbdeploy.DirectoryResourceID(condition.Value))
+			ref, err := engine.deployment.Resources.FileSystem.ResolveDirectory(lbdeploy.DirectoryResourceID(condition.Subject))
 			if err != nil {
 				return false, conditionSelfError(condition, err)
 			}
@@ -149,7 +149,7 @@ func (engine ConditionEngine) evaluate(condition lbdeploy.Condition) (bool, erro
 			defer dir.Close()
 			return true, nil
 		case lbdeploy.ConditionFileExists:
-			ref, err := engine.deployment.Resources.FileSystem.ResolveFile(lbdeploy.FileResourceID(condition.Value))
+			ref, err := engine.deployment.Resources.FileSystem.ResolveFile(lbdeploy.FileResourceID(condition.Subject))
 			if err != nil {
 				return false, conditionSelfError(condition, err)
 			}
@@ -170,9 +170,9 @@ func (engine ConditionEngine) evaluate(condition lbdeploy.Condition) (bool, erro
 			}
 			path, err := ref.Path()
 			if err != nil {
-				return false, conditionSelfError(condition, fmt.Errorf("file \"%s\": the path exists but it is not a regular file", condition.Value))
+				return false, conditionSelfError(condition, fmt.Errorf("file \"%s\": the path exists but it is not a regular file", condition.Subject))
 			}
-			return false, conditionSelfError(condition, fmt.Errorf("file \"%s\": the \"%s\" path exists but it is not a regular file", condition.Value, path))
+			return false, conditionSelfError(condition, fmt.Errorf("file \"%s\": the \"%s\" path exists but it is not a regular file", condition.Subject, path))
 		default:
 			return false, conditionSelfError(condition, fmt.Errorf("unrecognized condition type: %s", condition.Type))
 		}
