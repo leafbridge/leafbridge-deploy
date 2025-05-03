@@ -117,6 +117,14 @@ func (dep Deployment) validateCondition(condition Condition) error {
 	// Validate the condition based on its type.
 	err := func() error {
 		switch condition.Type {
+		case ConditionSubcondition:
+			if condition.Subject == "" {
+				return errors.New("the condition does not provide a condition ID")
+			}
+			if _, found := dep.Conditions[ConditionID(condition.Subject)]; !found {
+				return fmt.Errorf("the condition references a condition ID that is not defined: %s", condition.Subject)
+			}
+			// TODO: Check for recursive conditions?
 		case ConditionProcessIsRunning:
 			if condition.Subject == "" {
 				return errors.New("the condition does not provide a process resource ID")

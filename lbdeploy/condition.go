@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gentlemanautomaton/structformat"
 	"github.com/leafbridge/leafbridge-deploy/lbvalue"
 )
 
@@ -25,6 +26,9 @@ func (list ConditionList) String() string {
 	return out.String()
 }
 
+// ConditionCache holds a cache of evaluated conditions.
+type ConditionCache map[ConditionID]bool
+
 // ConditionID is a unique identifier for a condition.
 type ConditionID string
 
@@ -33,6 +37,7 @@ type ConditionType string
 
 // Supported condition types.
 const (
+	ConditionSubcondition            ConditionType = "condition"
 	ConditionProcessIsRunning        ConditionType = "resource.process:running"
 	ConditionMutexExists             ConditionType = "resource.mutex:exists"
 	ConditionRegistryKeyExists       ConditionType = "resource.registry.key:exists"
@@ -67,6 +72,7 @@ const (
 
 // ConditionError is returned when a condition fails due to an error.
 type ConditionError struct {
+	ID           ConditionID
 	Label        string
 	Type         ConditionType
 	Element      ConditionElement
@@ -81,29 +87,30 @@ func (e ConditionError) Unwrap() error {
 
 // Error returns the error as a string.
 func (e ConditionError) Error() string {
+	var builder structformat.Builder
+	switch {
+	case e.ID != "" && e.Label != "":
+		builder.WritePrimary(fmt.Sprintf("%s (%s)", e.ID, e.Label))
+	case e.ID != "":
+		builder.WritePrimary(string(e.ID))
+	case e.Label != "":
+		builder.WritePrimary(string(e.Label))
+	}
+
 	switch e.Element {
 	case ConditionElementAny:
-		if e.Label != "" {
-			return fmt.Sprintf("%s: Any [%d]: %s", e.Label, e.SubCondition, e.Err)
-		}
-		return fmt.Sprintf("Any [%d]: %s", e.SubCondition, e.Err)
+		builder.WritePrimary(fmt.Sprintf("Any [%d]", e.SubCondition))
 	case ConditionElementAll:
-		if e.Label != "" {
-			return fmt.Sprintf("%s: All [%d]: %s", e.Label, e.SubCondition, e.Err)
-		}
-		return fmt.Sprintf("All [%d]: %s", e.SubCondition, e.Err)
+		builder.WritePrimary(fmt.Sprintf("All [%d]", e.SubCondition))
 	default:
 		if e.Type != "" {
-			if e.Label != "" {
-				return fmt.Sprintf("%s: %s: %s", e.Label, e.Type, e.Err)
-			}
-			return fmt.Sprintf("%s: %s", e.Type, e.Err)
+			builder.WritePrimary(string(e.Type))
 		}
-		if e.Label != "" {
-			return fmt.Sprintf("%s: %s", e.Label, e.Err)
-		}
-		return e.Err.Error()
 	}
+
+	builder.WriteStandard(e.Err.Error())
+
+	return builder.String()
 }
 
 func conditionSelfError(c Condition, err error) error {
