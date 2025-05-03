@@ -138,7 +138,7 @@ func (dep Deployment) validateCondition(condition Condition) error {
 			if _, found := dep.Resources.Registry.Keys[RegistryKeyResourceID(condition.Subject)]; !found {
 				return fmt.Errorf("the condition references a registry key resource ID that is not defined: %s", condition.Subject)
 			}
-		case ConditionRegistryValueExists:
+		case ConditionRegistryValueExists, ConditionRegistryValueComparison:
 			if condition.Subject == "" {
 				return errors.New("the condition does not provide a registry value resource ID")
 			}

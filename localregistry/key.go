@@ -120,7 +120,7 @@ func (key Key) HasValue(name string) (bool, error) {
 	return true, nil
 }
 
-// GetValue retrieves a value from the registry with the requested type.
+// GetValue retrieves a value from the registry key with the requested type.
 func (key Key) GetValue(name string, kind lbvalue.Kind) (lbvalue.Value, error) {
 	switch kind {
 	case lbvalue.KindBool:

@@ -6,6 +6,7 @@ import (
 
 	"github.com/gentlemanautomaton/winobj/winmutex"
 	"github.com/leafbridge/leafbridge-deploy/lbdeploy"
+	"github.com/leafbridge/leafbridge-deploy/lbvalue"
 	"github.com/leafbridge/leafbridge-deploy/localfs"
 	"github.com/leafbridge/leafbridge-deploy/localregistry"
 )
@@ -120,7 +121,7 @@ func (engine ConditionEngine) evaluate(condition lbdeploy.Condition) (bool, erro
 			}
 			defer key.Close()
 			return true, nil
-		case lbdeploy.ConditionRegistryValueExists:
+		case lbdeploy.ConditionRegistryValueExists, lbdeploy.ConditionRegistryValueComparison:
 			ref, err := engine.deployment.Resources.Registry.ResolveValue(lbdeploy.RegistryValueResourceID(condition.Subject))
 			if err != nil {
 				return false, conditionSelfError(condition, err)
@@ -133,7 +134,22 @@ func (engine ConditionEngine) evaluate(condition lbdeploy.Condition) (bool, erro
 				return false, conditionSelfError(condition, err)
 			}
 			defer key.Close()
-			return key.HasValue(ref.ValueName)
+			switch condition.Type {
+			case lbdeploy.ConditionRegistryValueExists:
+				return key.HasValue(ref.Name)
+			case lbdeploy.ConditionRegistryValueComparison:
+				value, err := key.GetValue(ref.Name, ref.Type)
+				if err != nil {
+					return false, conditionSelfError(condition, err)
+				}
+				result, err := lbvalue.TryCompare(value, condition.Value)
+				if err != nil {
+					return false, conditionSelfError(condition, err)
+				}
+				return condition.Comparison.Evaluate(result), nil
+			default:
+				panic("unhandled condition type")
+			}
 		case lbdeploy.ConditionDirectoryExists:
 			ref, err := engine.deployment.Resources.FileSystem.ResolveDirectory(lbdeploy.DirectoryResourceID(condition.Subject))
 			if err != nil {

@@ -3,6 +3,8 @@ package lbdeploy
 import (
 	"fmt"
 	"strings"
+
+	"github.com/leafbridge/leafbridge-deploy/lbvalue"
 )
 
 // ConditionMap holds a set of conditions mapped by their identifiers.
@@ -31,23 +33,26 @@ type ConditionType string
 
 // Supported condition types.
 const (
-	ConditionProcessIsRunning    ConditionType = "resource.process:running"
-	ConditionMutexExists         ConditionType = "resource.mutex:exists"
-	ConditionRegistryKeyExists   ConditionType = "resource.registry.key:exists"
-	ConditionRegistryValueExists ConditionType = "resource.registry.value:exists"
-	ConditionDirectoryExists     ConditionType = "resource.file-system.directory:exists"
-	ConditionFileExists          ConditionType = "resource.file-system.file:exists"
+	ConditionProcessIsRunning        ConditionType = "resource.process:running"
+	ConditionMutexExists             ConditionType = "resource.mutex:exists"
+	ConditionRegistryKeyExists       ConditionType = "resource.registry.key:exists"
+	ConditionRegistryValueExists     ConditionType = "resource.registry.value:exists"
+	ConditionRegistryValueComparison ConditionType = "resource.registry.value:comparison"
+	ConditionDirectoryExists         ConditionType = "resource.file-system.directory:exists"
+	ConditionFileExists              ConditionType = "resource.file-system.file:exists"
 )
 
 // Condition describes a condition that can be evaluated.
 type Condition struct {
-	Label     string        `json:"label,omitempty"`
-	Type      ConditionType `json:"type,omitempty"`
-	Subject   string        `json:"subject,omitempty"`
-	Negated   bool          `json:"negated,omitempty"`
-	Any       []Condition   `json:"any,omitzero"`
-	All       []Condition   `json:"all,omitzero"`
-	Violation string        `json:"violation,omitempty"`
+	Label      string             `json:"label,omitempty"`
+	Type       ConditionType      `json:"type,omitempty"`
+	Subject    string             `json:"subject,omitempty"`
+	Comparison lbvalue.Comparison `json:"comparison,omitzero"`
+	Value      lbvalue.Value      `json:"value,omitzero"`
+	Negated    bool               `json:"negated,omitempty"`
+	Any        []Condition        `json:"any,omitzero"`
+	All        []Condition        `json:"all,omitzero"`
+	Violation  string             `json:"violation,omitempty"`
 }
 
 // ConditionElement identifies an element of a condition.
