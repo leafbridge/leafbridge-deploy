@@ -2,10 +2,14 @@ package localregistry
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
+	"github.com/leafbridge/leafbridge-deploy/datatype"
 	"github.com/leafbridge/leafbridge-deploy/lbdeploy"
+	"github.com/leafbridge/leafbridge-deploy/lbvalue"
 	"golang.org/x/sys/windows/registry"
 )
 
@@ -114,4 +118,40 @@ func (key Key) HasValue(name string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// GetValue retrieves a value from the registry with the requested type.
+func (key Key) GetValue(name string, kind lbvalue.Kind) (lbvalue.Value, error) {
+	switch kind {
+	case lbvalue.KindBool:
+		valueAsString, _, err := key.key.GetStringValue(name)
+		if err != nil {
+			return lbvalue.Value{}, err
+		}
+		value, err := strconv.ParseBool(valueAsString)
+		if err != nil {
+			return lbvalue.Value{}, err
+		}
+		return lbvalue.Bool(value), nil
+	case lbvalue.KindInt64:
+		value, _, err := key.key.GetIntegerValue(name)
+		if err != nil {
+			return lbvalue.Value{}, err
+		}
+		return lbvalue.Int64(int64(value)), nil
+	case lbvalue.KindString:
+		value, _, err := key.key.GetStringValue(name)
+		if err != nil {
+			return lbvalue.Value{}, err
+		}
+		return lbvalue.String(value), nil
+	case lbvalue.KindVersion:
+		value, _, err := key.key.GetStringValue(name)
+		if err != nil {
+			return lbvalue.Value{}, err
+		}
+		return lbvalue.Version(datatype.Version(value)), nil
+	default:
+		return lbvalue.Value{}, fmt.Errorf("unable to retrieve \"%s\" registry value: \"%s\" is not a regognized variable type", name, kind)
+	}
 }
