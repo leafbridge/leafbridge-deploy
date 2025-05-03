@@ -37,14 +37,14 @@ type ConditionType string
 
 // Supported condition types.
 const (
-	ConditionSubcondition            ConditionType = "condition"
-	ConditionProcessIsRunning        ConditionType = "resource.process:running"
-	ConditionMutexExists             ConditionType = "resource.mutex:exists"
-	ConditionRegistryKeyExists       ConditionType = "resource.registry.key:exists"
-	ConditionRegistryValueExists     ConditionType = "resource.registry.value:exists"
-	ConditionRegistryValueComparison ConditionType = "resource.registry.value:comparison"
-	ConditionDirectoryExists         ConditionType = "resource.file-system.directory:exists"
-	ConditionFileExists              ConditionType = "resource.file-system.file:exists"
+	ConditionTypeSubcondition            ConditionType = "condition"
+	ConditionTypeProcessIsRunning        ConditionType = "resource.process:running"
+	ConditionTypeMutexExists             ConditionType = "resource.mutex:exists"
+	ConditionTypeRegistryKeyExists       ConditionType = "resource.registry.key:exists"
+	ConditionTypeRegistryValueExists     ConditionType = "resource.registry.value:exists"
+	ConditionTypeRegistryValueComparison ConditionType = "resource.registry.value:comparison"
+	ConditionTypeDirectoryExists         ConditionType = "resource.file-system.directory:exists"
+	ConditionTypeFileExists              ConditionType = "resource.file-system.file:exists"
 )
 
 // Condition describes a condition that can be evaluated.

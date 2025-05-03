@@ -117,7 +117,7 @@ func (dep Deployment) validateCondition(condition Condition) error {
 	// Validate the condition based on its type.
 	err := func() error {
 		switch condition.Type {
-		case ConditionSubcondition:
+		case ConditionTypeSubcondition:
 			if condition.Subject == "" {
 				return errors.New("the condition does not provide a condition ID")
 			}
@@ -125,42 +125,42 @@ func (dep Deployment) validateCondition(condition Condition) error {
 				return fmt.Errorf("the condition references a condition ID that is not defined: %s", condition.Subject)
 			}
 			// TODO: Check for recursive conditions?
-		case ConditionProcessIsRunning:
+		case ConditionTypeProcessIsRunning:
 			if condition.Subject == "" {
 				return errors.New("the condition does not provide a process resource ID")
 			}
 			if _, found := dep.Resources.Processes[ProcessResourceID(condition.Subject)]; !found {
 				return fmt.Errorf("the condition references a process resource ID that is not defined: %s", condition.Subject)
 			}
-		case ConditionMutexExists:
+		case ConditionTypeMutexExists:
 			if condition.Subject == "" {
 				return errors.New("the condition does not provide a mutex resource ID")
 			}
 			if _, found := dep.Resources.Mutexes[MutexID(condition.Subject)]; !found {
 				return fmt.Errorf("the condition references a mutex resource ID that is not defined: %s", condition.Subject)
 			}
-		case ConditionRegistryKeyExists:
+		case ConditionTypeRegistryKeyExists:
 			if condition.Subject == "" {
 				return errors.New("the condition does not provide a registry key resource ID")
 			}
 			if _, found := dep.Resources.Registry.Keys[RegistryKeyResourceID(condition.Subject)]; !found {
 				return fmt.Errorf("the condition references a registry key resource ID that is not defined: %s", condition.Subject)
 			}
-		case ConditionRegistryValueExists, ConditionRegistryValueComparison:
+		case ConditionTypeRegistryValueExists, ConditionTypeRegistryValueComparison:
 			if condition.Subject == "" {
 				return errors.New("the condition does not provide a registry value resource ID")
 			}
 			if _, found := dep.Resources.Registry.Values[RegistryValueResourceID(condition.Subject)]; !found {
 				return fmt.Errorf("the condition references a registry value resource ID that is not defined: %s", condition.Subject)
 			}
-		case ConditionDirectoryExists:
+		case ConditionTypeDirectoryExists:
 			if condition.Subject == "" {
 				return errors.New("the condition does not provide a directory resource ID")
 			}
 			if _, found := dep.Resources.FileSystem.Directories[DirectoryResourceID(condition.Subject)]; !found {
 				return fmt.Errorf("the condition references a directory resource ID that is not defined: %s", condition.Subject)
 			}
-		case ConditionFileExists:
+		case ConditionTypeFileExists:
 			if condition.Subject == "" {
 				return errors.New("the condition does not provide a file resource ID")
 			}

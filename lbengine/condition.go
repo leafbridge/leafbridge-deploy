@@ -106,14 +106,14 @@ func (engine ConditionEngine) evaluate(id lbdeploy.ConditionID, condition lbdepl
 
 		// Evaluate individual conditions.
 		switch condition.Type {
-		case lbdeploy.ConditionSubcondition:
+		case lbdeploy.ConditionTypeSubcondition:
 			candidateID := lbdeploy.ConditionID(condition.Subject)
 			candidate, found := engine.deployment.Conditions[candidateID]
 			if !found {
 				return false, conditionSelfError(id, condition, fmt.Errorf("the \"%s\" condition is not defined in the deployment", condition.Subject))
 			}
 			return engine.evaluate(candidateID, candidate, cache, seen)
-		case lbdeploy.ConditionProcessIsRunning:
+		case lbdeploy.ConditionTypeProcessIsRunning:
 			process, found := engine.deployment.Resources.Processes[lbdeploy.ProcessResourceID(condition.Subject)]
 			if !found {
 				return false, conditionSelfError(id, condition, fmt.Errorf("the \"%s\" process is not defined in the deployment", condition.Subject))
@@ -123,7 +123,7 @@ func (engine ConditionEngine) evaluate(id lbdeploy.ConditionID, condition lbdepl
 				return false, conditionSelfError(id, condition, err)
 			}
 			return running > 0, nil
-		case lbdeploy.ConditionMutexExists:
+		case lbdeploy.ConditionTypeMutexExists:
 			mutex, found := engine.deployment.Resources.Mutexes[lbdeploy.MutexID(condition.Subject)]
 			if !found {
 				return false, conditionSelfError(id, condition, fmt.Errorf("the \"%s\" mutex is not defined in the deployment", condition.Subject))
@@ -137,7 +137,7 @@ func (engine ConditionEngine) evaluate(id lbdeploy.ConditionID, condition lbdepl
 				return false, conditionSelfError(id, condition, err)
 			}
 			return exists, nil
-		case lbdeploy.ConditionRegistryKeyExists:
+		case lbdeploy.ConditionTypeRegistryKeyExists:
 			ref, err := engine.deployment.Resources.Registry.ResolveKey(lbdeploy.RegistryKeyResourceID(condition.Subject))
 			if err != nil {
 				return false, conditionSelfError(id, condition, err)
@@ -151,7 +151,7 @@ func (engine ConditionEngine) evaluate(id lbdeploy.ConditionID, condition lbdepl
 			}
 			defer key.Close()
 			return true, nil
-		case lbdeploy.ConditionRegistryValueExists, lbdeploy.ConditionRegistryValueComparison:
+		case lbdeploy.ConditionTypeRegistryValueExists, lbdeploy.ConditionTypeRegistryValueComparison:
 			ref, err := engine.deployment.Resources.Registry.ResolveValue(lbdeploy.RegistryValueResourceID(condition.Subject))
 			if err != nil {
 				return false, conditionSelfError(id, condition, err)
@@ -165,9 +165,9 @@ func (engine ConditionEngine) evaluate(id lbdeploy.ConditionID, condition lbdepl
 			}
 			defer key.Close()
 			switch condition.Type {
-			case lbdeploy.ConditionRegistryValueExists:
+			case lbdeploy.ConditionTypeRegistryValueExists:
 				return key.HasValue(ref.Name)
-			case lbdeploy.ConditionRegistryValueComparison:
+			case lbdeploy.ConditionTypeRegistryValueComparison:
 				value, err := key.GetValue(ref.Name, ref.Type)
 				if err != nil {
 					return false, conditionSelfError(id, condition, err)
@@ -180,7 +180,7 @@ func (engine ConditionEngine) evaluate(id lbdeploy.ConditionID, condition lbdepl
 			default:
 				panic("unhandled condition type")
 			}
-		case lbdeploy.ConditionDirectoryExists:
+		case lbdeploy.ConditionTypeDirectoryExists:
 			ref, err := engine.deployment.Resources.FileSystem.ResolveDirectory(lbdeploy.DirectoryResourceID(condition.Subject))
 			if err != nil {
 				return false, conditionSelfError(id, condition, err)
@@ -194,7 +194,7 @@ func (engine ConditionEngine) evaluate(id lbdeploy.ConditionID, condition lbdepl
 			}
 			defer dir.Close()
 			return true, nil
-		case lbdeploy.ConditionFileExists:
+		case lbdeploy.ConditionTypeFileExists:
 			ref, err := engine.deployment.Resources.FileSystem.ResolveFile(lbdeploy.FileResourceID(condition.Subject))
 			if err != nil {
 				return false, conditionSelfError(id, condition, err)
