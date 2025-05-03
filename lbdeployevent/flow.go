@@ -122,6 +122,7 @@ func (e FlowStopped) Duration() time.Duration {
 type FlowCondition struct {
 	Deployment lbdeploy.DeploymentID
 	Flow       lbdeploy.FlowID
+	Use        lbdeploy.ConditionUse
 	Passed     lbdeploy.ConditionList
 	Failed     lbdeploy.ConditionList
 	Err        error
@@ -134,7 +135,10 @@ func (e FlowCondition) Component() string {
 
 // Level returns the level of the event.
 func (e FlowCondition) Level() slog.Level {
-	if e.Err != nil || len(e.Failed) > 0 {
+	if e.Err != nil {
+		return slog.LevelError
+	}
+	if e.Use == lbdeploy.ConditionUsePrecondition && len(e.Failed) > 0 {
 		return slog.LevelError
 	}
 	return slog.LevelDebug
@@ -147,11 +151,11 @@ func (e FlowCondition) Message() string {
 	builder.WritePrimary(string(e.Deployment))
 	builder.WritePrimary(string(e.Flow))
 	if e.Err != nil {
-		builder.WriteStandard(fmt.Sprintf("Unable to evaluate preconditions: %s", e.Err))
+		builder.WriteStandard(fmt.Sprintf("Unable to evaluate %s: %s", e.Use.Plural(), e.Err))
 	} else if len(e.Failed) > 0 {
-		builder.WriteStandard(fmt.Sprintf("One or more preconditions failed: %s.", e.Failed))
+		builder.WriteStandard(fmt.Sprintf("One or more %s did not pass: %s.", e.Use.Plural(), e.Failed))
 	} else {
-		builder.WriteStandard(fmt.Sprintf("All preconditions passed: %s.", e.Passed))
+		builder.WriteStandard(fmt.Sprintf("All %s passed: %s.", e.Use.Plural(), e.Passed))
 	}
 
 	return builder.String()
@@ -169,6 +173,7 @@ func (e FlowCondition) Attrs() []slog.Attr {
 	attrs := []slog.Attr{
 		slog.String("deployment", string(e.Deployment)),
 		slog.String("flow", string(e.Flow)),
+		slog.String("use", string(e.Use)),
 		slog.Group("conditions", "passed", e.Passed, "failed", e.Failed),
 	}
 	if e.Err != nil {

@@ -60,6 +60,36 @@ type Condition struct {
 	Violation  string             `json:"violation,omitempty"`
 }
 
+// ConditionUse identifies common uses of a condition.
+type ConditionUse string
+
+const (
+	ConditionUseConstraint   ConditionUse = "constraint"
+	ConditionUsePrecondition ConditionUse = "precondition"
+)
+
+// String returns a string representation of the use.
+func (use ConditionUse) String() string {
+	if use == "" {
+		return "condition"
+	}
+	return string(use)
+}
+
+// Plural returns the use in plural form.
+func (use ConditionUse) Plural() string {
+	switch use {
+	case "":
+		return "conditions"
+	case ConditionUseConstraint:
+		return "constraints"
+	case ConditionUsePrecondition:
+		return "preconditions"
+	default:
+		return string(use)
+	}
+}
+
 // ConditionElement identifies an element of a condition.
 type ConditionElement int
 

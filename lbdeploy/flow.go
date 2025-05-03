@@ -7,7 +7,10 @@ type FlowMap map[FlowID]Flow
 type FlowID string
 
 // Flow is a flow of actions within a deployment.
+//
+// TODO: Consider renaming "Preconditions" to "Requirements".
 type Flow struct {
+	Constraints   ConditionList `json:"constraints,omitzero"`
 	Preconditions ConditionList `json:"preconditions,omitzero"`
 	Locks         []LockID      `json:"locks,omitzero"`
 	Behavior      Behavior      `json:"behavior,omitzero"`

@@ -42,6 +42,48 @@ func (engine flowEngine) Invoke(ctx context.Context) error {
 		return fmt.Errorf("the \"%s\" flow is already running", engine.flow.ID)
 	}
 
+	// Evaluate all constraints for the flow.
+	if conditions := engine.flow.Definition.Constraints; len(conditions) > 0 {
+		// Prepare a condition engine.
+		ce := NewConditionEngine(engine.deployment)
+
+		// Evaluate each condition.
+		var passed, failed lbdeploy.ConditionList
+		for i, condition := range conditions {
+			result, err := ce.Evaluate(condition)
+			if err != nil {
+				// Record the evaluation failure.
+				engine.events.Record(lbdeployevent.FlowCondition{
+					Deployment: engine.deployment.ID,
+					Flow:       engine.flow.ID,
+					Use:        lbdeploy.ConditionUseConstraint,
+					Err:        err,
+				})
+
+				return fmt.Errorf("the \"%s\" flow failed to evaluate constraint %d: %w", engine.flow.ID, i+1, err)
+			}
+			if !result {
+				failed = append(failed, condition)
+			} else {
+				passed = append(passed, condition)
+			}
+		}
+
+		// Record the results of the evaluation.
+		engine.events.Record(lbdeployevent.FlowCondition{
+			Deployment: engine.deployment.ID,
+			Flow:       engine.flow.ID,
+			Use:        lbdeploy.ConditionUseConstraint,
+			Passed:     passed,
+			Failed:     failed,
+		})
+
+		// If any of the constrains failed, skip execution.
+		if len(failed) > 0 {
+			return nil
+		}
+	}
+
 	// Evaluate all preconditions for the flow.
 	if conditions := engine.flow.Definition.Preconditions; len(conditions) > 0 {
 		// Prepare a condition engine.
@@ -56,6 +98,7 @@ func (engine flowEngine) Invoke(ctx context.Context) error {
 				engine.events.Record(lbdeployevent.FlowCondition{
 					Deployment: engine.deployment.ID,
 					Flow:       engine.flow.ID,
+					Use:        lbdeploy.ConditionUsePrecondition,
 					Err:        err,
 				})
 
@@ -72,6 +115,7 @@ func (engine flowEngine) Invoke(ctx context.Context) error {
 		engine.events.Record(lbdeployevent.FlowCondition{
 			Deployment: engine.deployment.ID,
 			Flow:       engine.flow.ID,
+			Use:        lbdeploy.ConditionUsePrecondition,
 			Passed:     passed,
 			Failed:     failed,
 		})
