@@ -64,7 +64,14 @@ type Application struct {
 	Architecture appcode.Architecture `json:"architecture,omitempty"`
 	Scope        appscope.Scope       `json:"scope,omitempty"`
 	ProductCode  ProductCode          `json:"product-code,omitempty"`
-	Condition    ConditionID          `json:"condition,omitempty"`
+	Detection    AppDetection         `json:"detection,omitempty"`
+}
+
+// AppDetection describes how to detect the presence of an installed
+// application and how to determine what version is installed.
+type AppDetection struct {
+	Present ConditionID             `json:"present,omitempty"`
+	Version RegistryValueResourceID `json:"version,omitempty"`
 }
 
 // AppEvaluation is an evaluation of potential changes to the set of installed

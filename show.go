@@ -115,6 +115,10 @@ func (cmd ShowAppsCmd) Run(ctx context.Context) error {
 		} else {
 			fmt.Printf("      Installed:    %t\n", installed)
 		}
+
+		if version, err := ae.Version(id); err == nil && version != "" {
+			fmt.Printf("      Version:      %s\n", version)
+		}
 	}
 
 	return nil
