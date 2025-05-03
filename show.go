@@ -329,7 +329,7 @@ func (cmd ShowResourcesCmd) Run(ctx context.Context) error {
 				ref, err := dep.Resources.Registry.ResolveValue(id)
 				if err != nil {
 					fmt.Printf("      Key:         (%v)\n", err)
-					fmt.Printf("      Name:        %s\n", ref.ValueName)
+					fmt.Printf("      Name:        %s\n", ref.Name)
 					return
 				}
 
@@ -337,7 +337,7 @@ func (cmd ShowResourcesCmd) Run(ctx context.Context) error {
 				path, err := ref.Key().Path()
 				if err != nil {
 					fmt.Printf("      Key:         (%v)\n", err)
-					fmt.Printf("      Name:        %s\n", ref.ValueName)
+					fmt.Printf("      Name:        %s\n", ref.Name)
 					return
 				}
 
@@ -345,7 +345,7 @@ func (cmd ShowResourcesCmd) Run(ctx context.Context) error {
 				key, err := localregistry.OpenKey(ref.Key())
 				if err != nil {
 					fmt.Printf("      Key:         %s\n", path)
-					fmt.Printf("      Name:        %s\n", ref.ValueName)
+					fmt.Printf("      Name:        %s\n", ref.Name)
 					if os.IsNotExist(err) {
 						fmt.Printf("      Status:      Missing\n")
 					} else {
@@ -357,10 +357,10 @@ func (cmd ShowResourcesCmd) Run(ctx context.Context) error {
 
 				// Print the key path and value name
 				fmt.Printf("      Key:         %s\n", key.Path())
-				fmt.Printf("      Name:        %s\n", ref.ValueName)
+				fmt.Printf("      Name:        %s\n", ref.Name)
 
 				// Determine whether the registry value exists.
-				exists, err := key.HasValue(ref.ValueName)
+				exists, err := key.HasValue(ref.Name)
 				if err != nil {
 					fmt.Printf("      Status:      (%v)\n", err)
 				}
@@ -370,7 +370,12 @@ func (cmd ShowResourcesCmd) Run(ctx context.Context) error {
 					return
 				}
 
-				fmt.Printf("      Status:      Present\n")
+				value, err := key.GetValue(ref.Name, ref.Type)
+				if err != nil {
+					fmt.Printf("      Value:       (%v)\n", err)
+					return
+				}
+				fmt.Printf("      Value:       %s\n", value)
 
 				// TODO: Report statistics.
 				//fmt.Printf("      Modified: %s\n", fi.ModTime())

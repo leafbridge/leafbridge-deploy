@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/leafbridge/leafbridge-deploy/idset"
+	"github.com/leafbridge/leafbridge-deploy/lbvalue"
 	"golang.org/x/sys/windows/registry"
 )
 
@@ -125,11 +126,11 @@ func (reg RegistryResources) ResolveValue(value RegistryValueResourceID) (ref Re
 	}
 
 	return RegistryValueRef{
-		Root:      key.Root,
-		Lineage:   key.Lineage,
-		ValueID:   value,
-		ValueName: data.Name,
-		ValueType: data.Type,
+		Root:    key.Root,
+		Lineage: key.Lineage,
+		ID:      value,
+		Name:    data.Name,
+		Type:    data.Type,
 	}, nil
 }
 
@@ -206,22 +207,20 @@ type RegistryValueResource struct {
 	Key RegistryKeyResourceID `json:"key"`
 
 	// Name is the name of the value within its registry key.
-	Name string `json:"name"` // Name
+	Name string `json:"name"`
 
 	// Type is the type of data the value holds.
-	//
-	// FIXME: Make this a custom type.
-	Type string `json:"type"` // Name
+	Type lbvalue.Kind `json:"type"`
 }
 
 // RegistryValueRef is a resolved reference to a registry key on the local
 // system.
 type RegistryValueRef struct {
-	Root      RegistryRoot
-	Lineage   []RegistryKeyResource
-	ValueID   RegistryValueResourceID
-	ValueName string
-	ValueType string
+	Root    RegistryRoot
+	Lineage []RegistryKeyResource
+	ID      RegistryValueResourceID
+	Name    string
+	Type    lbvalue.Kind
 }
 
 // Key returns a reference to the values's registry key.
