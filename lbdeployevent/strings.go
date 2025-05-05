@@ -6,7 +6,7 @@ import (
 )
 
 func plural[T ~int | ~int64](value T, singular, plural string) string {
-	if value == 0 {
+	if value == 1 {
 		return singular
 	}
 	return plural
