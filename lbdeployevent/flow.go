@@ -33,7 +33,7 @@ func (e FlowStarted) Message() string {
 
 	builder.WritePrimary(string(e.Deployment))
 	builder.WritePrimary(string(e.Flow))
-	builder.WriteStandard(fmt.Sprintf("Starting invocation"))
+	builder.WriteStandard(fmt.Sprintf("Starting."))
 
 	return builder.String()
 }
@@ -89,15 +89,17 @@ func (e FlowStopped) Message() string {
 	)
 	switch {
 	case e.Stats.ActionsCompleted > 0 && e.Stats.ActionsFailed > 0:
-		builder.WriteStandard(fmt.Sprintf("Completed invocation with %s completed successfuly and %s encountering an error.", completed, failed))
+		builder.WriteStandard(fmt.Sprintf("Stopped after %s completed successfully and %s encountered an error.", completed, failed))
 	case e.Stats.ActionsCompleted > 0:
-		builder.WriteStandard(fmt.Sprintf("Completed invocation with %s completed successfuly.", completed))
+		builder.WriteStandard(fmt.Sprintf("Stopped after %s completed successfully.", completed))
 	case e.Stats.ActionsFailed > 1:
-		builder.WriteStandard(fmt.Sprintf("Completed invocation with %s encountering an error.", failed))
-	case e.Stats.ActionsFailed == 1:
-		builder.WriteStandard(fmt.Sprintf("Stopped invocation due to an error: %s.", e.Err))
+		builder.WriteStandard(fmt.Sprintf("Stopped after %s encountered an error.", failed))
+	case e.Err != nil:
+		builder.WriteStandard(fmt.Sprintf("Stopped after encountering an error: %s.", e.Err))
+	case e.Stats.ActionsFailed > 0:
+		builder.WriteStandard("Stopped.")
 	default:
-		builder.WriteStandard("Completed invocation.")
+		builder.WriteStandard("Completed.")
 	}
 
 	builder.WriteNote(e.Duration().Round(time.Millisecond * 10).String())
