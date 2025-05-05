@@ -184,6 +184,9 @@ func (engine flowEngine) Invoke(ctx context.Context) error {
 	// Record the time that the flow started.
 	started := time.Now()
 
+	// Collect statistics.
+	var stats lbdeploy.FlowStats
+
 	// Execute each action in the flow.
 	err := func() error {
 		var errs []error
@@ -209,13 +212,18 @@ func (engine flowEngine) Invoke(ctx context.Context) error {
 
 			// Invoke the action.
 			if err := ae.Invoke(ctx); err != nil {
+				if ctx.Err() == err {
+					break // Always stop when the context is cancelled.
+				}
+
+				stats.ActionsFailed++
+
 				errs = append(errs, err)
 				if behavior.OnError != lbdeploy.OnErrorContinue {
 					break
 				}
-				if ctx.Err() == err {
-					break // Always stop when the context is cancelled.
-				}
+			} else {
+				stats.ActionsCompleted++
 			}
 		}
 		return errors.Join(errs...)
@@ -228,6 +236,7 @@ func (engine flowEngine) Invoke(ctx context.Context) error {
 	engine.events.Record(lbdeployevent.FlowStopped{
 		Deployment: engine.deployment.ID,
 		Flow:       engine.flow.ID,
+		Stats:      stats,
 		Started:    started,
 		Stopped:    stopped,
 		Err:        err,

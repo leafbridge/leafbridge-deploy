@@ -16,3 +16,9 @@ type Flow struct {
 	Behavior      Behavior      `json:"behavior,omitzero"`
 	Actions       []Action      `json:"actions,omitzero"`
 }
+
+// FlowStats hold statistics about a flow that has been invoked.
+type FlowStats struct {
+	ActionsCompleted int
+	ActionsFailed    int
+}

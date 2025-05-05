@@ -57,6 +57,7 @@ func (e FlowStarted) Attrs() []slog.Attr {
 type FlowStopped struct {
 	Deployment lbdeploy.DeploymentID
 	Flow       lbdeploy.FlowID
+	Stats      lbdeploy.FlowStats
 	Started    time.Time
 	Stopped    time.Time
 	Err        error
@@ -81,11 +82,24 @@ func (e FlowStopped) Message() string {
 
 	builder.WritePrimary(string(e.Deployment))
 	builder.WritePrimary(string(e.Flow))
-	if e.Err != nil {
+
+	var (
+		completed = fmt.Sprintf("%d %s", e.Stats.ActionsCompleted, plural(e.Stats.ActionsCompleted, "action", "actions"))
+		failed    = fmt.Sprintf("%d %s", e.Stats.ActionsFailed, plural(e.Stats.ActionsFailed, "action", "actions"))
+	)
+	switch {
+	case e.Stats.ActionsCompleted > 0 && e.Stats.ActionsFailed > 0:
+		builder.WriteStandard(fmt.Sprintf("Completed invocation with %s completed successfuly and %s encountering an error.", completed, failed))
+	case e.Stats.ActionsCompleted > 0:
+		builder.WriteStandard(fmt.Sprintf("Completed invocation with %s completed successfuly.", completed))
+	case e.Stats.ActionsFailed > 1:
+		builder.WriteStandard(fmt.Sprintf("Completed invocation with %s encountering an error.", failed))
+	case e.Stats.ActionsFailed == 1:
 		builder.WriteStandard(fmt.Sprintf("Stopped invocation due to an error: %s.", e.Err))
-	} else {
+	default:
 		builder.WriteStandard("Completed invocation.")
 	}
+
 	builder.WriteNote(e.Duration().Round(time.Millisecond * 10).String())
 
 	return builder.String()
@@ -95,6 +109,9 @@ func (e FlowStopped) Message() string {
 // multiple lines of text. An empty string is returned when no details
 // are available.
 func (e FlowStopped) Details() string {
+	if e.Err != nil && (e.Stats.ActionsCompleted > 0 || e.Stats.ActionsFailed > 1) {
+		return e.Err.Error()
+	}
 	return ""
 }
 
@@ -105,6 +122,7 @@ func (e FlowStopped) Attrs() []slog.Attr {
 		slog.String("flow", string(e.Flow)),
 		slog.Time("started", e.Started),
 		slog.Time("stopped", e.Stopped),
+		slog.Group("actions", "completed", e.Stats.ActionsCompleted, "failed", e.Stats.ActionsFailed),
 	}
 	if e.Err != nil {
 		attrs = append(attrs, slog.String("error", e.Err.Error()))
