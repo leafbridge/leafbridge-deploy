@@ -7,6 +7,7 @@ import (
 	"maps"
 	"os"
 	"slices"
+	"strings"
 
 	"github.com/gentlemanautomaton/winobj/winmutex"
 	"github.com/leafbridge/leafbridge-deploy/lbengine"
@@ -96,28 +97,44 @@ func (cmd ShowAppsCmd) Run(ctx context.Context) error {
 			}
 		}
 
-		fmt.Printf("    %s\n", id)
 		app := dep.Apps[id]
-		if app.Name != "" {
-			fmt.Printf("      Name:         %s\n", app.Name)
-		}
-		if app.Scope != "" {
-			fmt.Printf("      Scope:        %s\n", app.Scope)
-		}
-		if app.Architecture != "" {
-			fmt.Printf("      Architecture: %s\n", app.Architecture)
-		}
+
+		fmt.Printf("    %s\n", id)
+
 		if app.ProductCode != "" {
 			fmt.Printf("      Product Code: %s\n", app.ProductCode)
 		}
-		if installedErr != nil {
-			fmt.Printf("      Installed:    %s\n", installedErr)
-		} else {
-			fmt.Printf("      Installed:    %t\n", installed)
+
+		if app.Name != "" {
+			fmt.Printf("      Name:         %s\n", app.Name)
 		}
 
-		if version, err := ae.Version(id); err == nil && version != "" {
-			fmt.Printf("      Version:      %s\n", version)
+		{
+			var info []string
+			if scope := string(app.Scope); scope != "" {
+				switch scope {
+				case "machine":
+					scope = "Machine"
+				case "user":
+					scope = "User"
+				}
+				info = append(info, scope)
+			}
+			if app.Architecture != "" {
+				info = append(info, string(app.Architecture))
+			}
+			if version, err := ae.Version(id); err == nil && version != "" {
+				info = append(info, fmt.Sprintf("v%s", version.Canonical()))
+			} else if installedErr != nil {
+				info = append(info, installedErr.Error())
+			} else if installed {
+				info = append(info, "Installed")
+			} else {
+				info = append(info, "Missing")
+			}
+			if len(info) > 0 {
+				fmt.Printf("      Info:         %s\n", strings.Join(info, ", "))
+			}
 		}
 	}
 

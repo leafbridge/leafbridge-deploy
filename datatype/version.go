@@ -46,6 +46,19 @@ func (v Version) Segments() iter.Seq[VersionSegment] {
 	}
 }
 
+// Canonical returns the version in a canonical format that omits excess
+// zeroes and any leading version designator such as "v".
+func (v Version) Canonical() string {
+	var out strings.Builder
+	for segment := range v.Segments() {
+		if out.Len() > 0 {
+			out.WriteString(".")
+		}
+		out.WriteString(string(segment))
+	}
+	return out.String()
+}
+
 // VersionSegment is a segement within a version. Segments are separated by
 // dots.
 type VersionSegment string
